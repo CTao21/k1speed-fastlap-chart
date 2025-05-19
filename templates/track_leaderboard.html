@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="main-card">
+        <div class="card-header">
+            <h2>{{ track_name }} Leaderboard</h2>
+            <a href="{{ url_for('leaderboard') }}" class="btn btn-outline-secondary">
+                Back to Leaderboards
+            </a>
+        </div>
+
+        <div class="leaderboard-columns">
+            <div class="leaderboard-section">
+                <h4>Most Races</h4>
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Racer</th>
+                            <th>Races</th>
+                            <th>First Race</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for racer in most_sessions %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                {% if racer.profile_pic %}
+                                <img src="{{ racer.profile_pic }}" class="leaderboard-pic">
+                                {% endif %}
+                                {{ racer.username }}
+                            </td>
+                            <td>{{ racer.session_count }}</td>
+                            <td>{{ racer.first_date.strftime('%Y-%m-%d') }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center py-3">No data available</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="leaderboard-section">
+                <h4>Fastest Laps</h4>
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Racer</th>
+                            <th>Time</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for racer in best_laps %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                {% if racer.profile_pic %}
+                                <img src="{{ racer.profile_pic }}" class="leaderboard-pic">
+                                {% endif %}
+                                {{ racer.username }}
+                            </td>
+                            <td class="best-lap">{{ "%.2f"|format(racer.best_lap) }}s</td>
+                            <td>{{ racer.best_date }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center py-3">No data available</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

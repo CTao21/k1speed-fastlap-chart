@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="main-card">
+        <div class="profile-header mb-4">
+            {% if profile_pic %}
+            <img src="{{ profile_pic }}" class="profile-image" alt="{{ username }}'s profile picture">
+            {% endif %}
+            <div class="profile-info">
+                <h2>Welcome Back, {{ username }}!</h2>
+                <div class="racer-meta">
+                    <span class="badge bg-primary">
+                        {{ total_races }} Race{% if total_races != 1 %}s{% endif %} Tracked
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <form method="POST" action="{{ url_for('profile_found') }}">
+                <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">
+                    <i class="bi bi-cloud-arrow-down"></i> Import New Races
+                </button>
+            </form>
+            
+            <div class="d-grid gap-2">
+                <a href="{{ url_for('results') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-speedometer2"></i> View Current Results
+                </a>
+                <a href="{{ url_for('profile_setup') }}" class="btn btn-link">
+                    <i class="bi bi-gear"></i> Edit Profile Settings
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

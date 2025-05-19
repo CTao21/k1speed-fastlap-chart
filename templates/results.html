@@ -1,0 +1,38 @@
+<!-- Updated results.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Profile Banner -->
+    <div class="main-card d-flex align-items-center mb-4 p-4">
+        <img src="{{ profile_pic }}" class="profile-image me-4" alt="{{ username }}">
+        <div>
+            <h3 class="mb-1">{{ session['k1_name'] }}</h3>
+            <p class="mb-1"><strong>Username:</strong> {{ username }}</p>
+            <p class="mb-1"><strong>Total Races:</strong> {{ tracks.values() | sum(attribute='sessions') }}</p>
+            <a href="{{ url_for('profile_setup') }}" class="btn btn-sm btn-outline-primary mt-2">Edit Profile</a>
+        </div>
+    </div>
+
+    <!-- Track Cards -->
+    <div class="row">
+        {% for track_name, data in tracks.items() %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ track_name }}</h5>
+                    <p class="card-text">
+                        <span class="me-2">Sessions: {{ data.sessions }}</span><br>
+                        <span class="me-2">First Race: {{ data.first_date }}</span><br>
+                        <span class="me-2">Fastest Lap: {{ data.best_lap }}s ({{ data.best_date }})</span>
+                    </p>
+                    <a href="{{ url_for('track_detail', track_name=data.raw_name) }}" 
+                       class="btn btn-primary">View Details</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+

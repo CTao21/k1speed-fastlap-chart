@@ -1,0 +1,140 @@
+/* Base Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)),
+                url('https://images.unsplash.com/photo-1555349223-c4751cc3c212') center/cover fixed;
+}
+
+/* Card Containers */
+.auth-card,
+.main-card {
+    background: rgba(255, 255, 255, 0.82) url('https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0f/3a/75/ca/bird-s-eye-view-of-kf1.jpg');
+    background-size: cover;
+    background-blend-mode: overlay;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    padding: 2rem;
+    margin: 1rem auto;
+    max-width: 800px;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+/* Profile Images */
+.profile-image {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e74c3c;
+    margin-right: 1.5rem;
+}
+
+/* Tables */
+.results-table {
+    background: rgba(255,255,255,0.9);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.results-table th {
+    background: #e74c3c;
+    color: white;
+    padding: 1rem;
+}
+
+.results-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.results-table tr:hover {
+    background: rgba(231, 76, 60, 0.05);
+    cursor: pointer;
+}
+
+.best-lap {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+/* Leaderboards */
+.tracks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.track-card {
+    background: rgba(255,255,255,0.9);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform 0.2s;
+}
+
+.track-card:hover {
+    transform: translateY(-3px);
+    text-decoration: none;
+}
+
+/* Charts */
+.chart-container {
+    padding: 1.5rem;
+    background: rgba(255,255,255,0.9);
+    border-radius: 8px;
+    margin: 1.5rem 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .main-card {
+        margin: 1rem;
+        padding: 1rem;
+    }
+    
+    .results-table td, 
+    .results-table th {
+        padding: 0.5rem;
+    }
+    
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .profile-image {
+        margin: 0 auto 1rem;
+    }
+}
+
+/* Animations */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.spinner-border {
+    animation: spin 0.75s linear infinite;
+}
+/* Fix chart height */
+#progressChart {
+    display: block;
+    width: 100%;
+    height: 300px !important;
+    margin-bottom: 1rem;
+}
+
+/* Make lap table more usable */
+.table-responsive {
+    overflow-x: auto;
+}
+
+table th, table td {
+    white-space: nowrap;
+}
+
+table th {
+    cursor: pointer;
+}
+

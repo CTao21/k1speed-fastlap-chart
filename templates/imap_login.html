@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="auth-card">
+        <h2 class="mb-4">Connect Your Email</h2>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-danger">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('imap_login') }}">
+            <div class="mb-3">
+                <label class="form-label">Your Name at K1</label>
+                <input type="text" name="k1_name" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Email Address</label>
+                <div class="row g-2">
+                    <div class="col">
+                        <input type="text" name="email_user" class="form-control" placeholder="username" required>
+                    </div>
+                    <div class="col-auto" style="width: 40px">
+                        <span class="mt-2">@</span>
+                    </div>
+                    <div class="col">
+                        <input type="text" name="email_domain" class="form-control" placeholder="domain.com" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">IMAP Server</label>
+                <input type="text" name="imap_server" class="form-control" placeholder="imap.gmail.com" required>
+                <small class="text-muted">Common: imap.gmail.com, imap.mail.yahoo.com, outlook.office365.com</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">IMAP Port</label>
+                <input type="number" name="imap_port" class="form-control" value="993" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Password</label>
+                <input type="password" name="password" class="form-control" required>
+                <small class="text-muted d-block mt-1">
+                    <strong>Note:</strong> Many email providers (like Gmail, Yahoo, and Outlook) require an <strong>App Password</strong> when used with external apps like this one.<br>
+                    This is a special one-time password you create in your email settings — it’s more secure and can be revoked at any time.
+                </small>
+                <ul class="small text-muted ps-3 mt-1">
+                    <li>
+                        <a href="https://support.google.com/accounts/answer/185833" target="_blank">
+                            Gmail: How to create an App Password
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://support.microsoft.com/en-us/account-billing/create-an-app-password-for-office-365-3e7c8607-db73-4003-90cb-90f9e8d3b6b4" target="_blank">
+                            Outlook: Microsoft App Password Guide
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://help.yahoo.com/kb/generate-manage-third-party-passwords-sln15241.html" target="_blank">
+                            Yahoo: Create a Third-Party App Password
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Connect</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

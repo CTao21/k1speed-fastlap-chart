@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K1 Speed Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">K1 Speed Tracker</a>
+            {% if 'email' in session %}
+            <div class="d-flex">
+                <a href="{{ url_for('results') }}" class="btn btn-sm btn-outline-light me-2">My Results</a>
+                <a href="{{ url_for('leaderboard') }}" class="btn btn-sm btn-outline-light">Leaderboards</a>
+            </div>
+            {% endif %}
+        </div>
+    </nav>
+    
+    <div class="main-background">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+</html>
