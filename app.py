@@ -422,7 +422,7 @@ def track_leaderboard(track_name):
                            best_laps=best_laps_list)
 
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True)
+# Render doesn’t use __main__, so we need to call create_all *every time*
+
+with app.app_context():
+    db.create_all()
