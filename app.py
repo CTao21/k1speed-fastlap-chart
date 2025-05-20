@@ -147,21 +147,37 @@ def imap_login():
 def profile_setup():
     if 'email' not in session:
         return redirect(url_for('imap_login'))
-    
+
     if request.method == 'POST':
         try:
+            username = request.form['username']
+            profile_pic_file = request.files.get('profile_pic_file')
+            profile_pic_url = None
+
+            # If user uploaded a file
+            if profile_pic_file and profile_pic_file.filename != '':
+                filename = secure_filename(profile_pic_file.filename)
+                upload_path = os.path.join('static/uploads', filename)
+                profile_pic_file.save(upload_path)
+                profile_pic_url = url_for('static', filename='uploads/' + filename)
+            else:
+                profile_pic_url = None  # fallback (can leave as None or a default image URL)
+
             user = User(
-                username=request.form['username'],
+                username=username,
                 email=session['email'],
-                profile_pic=request.form.get('profile_pic', ''),
+                profile_pic=profile_pic_url,
                 leaderboard_consent='consent' in request.form
             )
             db.session.add(user)
             db.session.commit()
             return redirect(url_for('import_loading'))
+
         except Exception as e:
             flash(f"Error creating profile: {str(e)}", 'error')
+
     return render_template('profile_setup.html')
+
 
 @app.route('/profile_found', methods=['GET', 'POST'])
 def profile_found():
