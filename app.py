@@ -168,12 +168,13 @@ def profile_setup():
             profile_pic_path = ''
             if 'profile_pic_file' in request.files:
                 file = request.files['profile_pic_file']
-                if file and allowed_file(file.filename):
+                if file and file.filename != '' and allowed_file(file.filename):
                     filename = secure_filename(file.filename)
-                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                    file.save(filepath)
-                    profile_pic_path = filepath  # Save path to DB
+                    upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file.save(upload_path)
+                    profile_pic_path = f"/static/uploads/{filename}"
 
+            # Save user
             user = User(
                 username=username,
                 email=session['email'],
@@ -182,12 +183,16 @@ def profile_setup():
             )
             db.session.add(user)
             db.session.commit()
-            return redirect(url_for('import_loading'))
+
+            return redirect(url_for('results'))  # ✅ This is where it redirects after success
 
         except Exception as e:
             flash(f"Error creating profile: {str(e)}", 'error')
+            # Still falls through and shows the form again *only* if there's an error
 
-    return render_template('profile_setup.html')
+    return render_template('profile_setup.html')  # 👈 Only renders if it's a GET or an error
+
+
 
 
 
