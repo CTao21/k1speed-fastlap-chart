@@ -24,7 +24,7 @@
                     <p class="card-text">
                         <span class="me-2">Sessions: {{ data.sessions }}</span><br>
                         <span class="me-2">First Race: {{ data.first_date }}</span><br>
-                        <span class="me-2">Fastest Lap: {{ "%.3f"|format(track.best_lap) }}s ({{ data.best_date }})</span>
+                        <span class="me-2">Fastest Lap: {{ "%.3f"|format(data.best_lap|float) }}s ({{ data.best_date }})</span>
                     </p>
                     <a href="{{ url_for('track_detail', track_name=data.raw_name) }}" 
                        class="btn btn-primary">View Details</a>
