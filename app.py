@@ -281,7 +281,7 @@ def results():
                 'raw_name': track.raw_name,
                 'sessions': len(sessions),
                 'first_date': first_session.date.strftime('%Y-%m-%d'),
-                'best_lap': f"{best_session.best_lap:.2f}",
+                'best_lap': f"{best_session.best_lap:.3f}",
                 'best_date': best_session.date.strftime('%Y-%m-%d')
             }
     
