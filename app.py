@@ -160,37 +160,34 @@ def profile_setup():
     if 'email' not in session:
         return redirect(url_for('imap_login'))
 
+    user = User.query.filter_by(email=session['email']).first()
+    if not user:
+        flash("User not found. Please log in again.", "error")
+        return redirect(url_for('imap_login'))
+
     if request.method == 'POST':
         try:
-            username = request.form['username']
-            leaderboard_consent = 'consent' in request.form
+            # Update fields
+            user.username = request.form['username']
+            user.leaderboard_consent = 'consent' in request.form
 
-            profile_pic_path = ''
+            # Handle file upload
             if 'profile_pic_file' in request.files:
                 file = request.files['profile_pic_file']
                 if file and file.filename != '' and allowed_file(file.filename):
                     filename = secure_filename(file.filename)
+                    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
                     upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                     file.save(upload_path)
-                    profile_pic_path = f"/static/uploads/{filename}"
+                    user.profile_pic = f"/static/uploads/{filename}"
 
-            # Save user
-            user = User(
-                username=username,
-                email=session['email'],
-                profile_pic=profile_pic_path,
-                leaderboard_consent=leaderboard_consent
-            )
-            db.session.add(user)
             db.session.commit()
-
-            return redirect(url_for('results'))  # ✅ This is where it redirects after success
+            return redirect(url_for('results'))
 
         except Exception as e:
-            flash(f"Error creating profile: {str(e)}", 'error')
-            # Still falls through and shows the form again *only* if there's an error
+            flash(f"Error updating profile: {str(e)}", 'error')
 
-    return render_template('profile_setup.html')  # 👈 Only renders if it's a GET or an error
+    return render_template('profile_setup.html')  # Form will be blank unless you prefillx
 
 
 
