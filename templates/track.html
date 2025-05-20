@@ -46,7 +46,7 @@
                 <tbody>
                     {% for s in sessions %}
                     <tr>
-                        <td>{{ s.date }}</td>
+                        <td data-sort="{{ s.date.isoformat() }}">{{ s.date.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>{{ s.total_laps }}</td>
                         <td>{{ "%.3f"|format(s.best_lap|float) }}</td>
                         <td>{{ "%.3f"|format(s.avg_lap|float) }}</td>
