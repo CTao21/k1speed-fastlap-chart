@@ -11,6 +11,9 @@ from flask import (
 )
 from flask_sqlalchemy import SQLAlchemy
 from email import message_from_bytes
+from werkzeug.utils import secure_filename
+
+
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -143,6 +146,15 @@ def imap_login():
             flash(f"Login failed: {str(e)}", 'error')
     return render_template('imap_login.html')
 
+from werkzeug.utils import secure_filename  # make sure this is at the top
+
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 @app.route('/profile_setup', methods=['GET', 'POST'])
 def profile_setup():
     if 'email' not in session:
@@ -151,23 +163,22 @@ def profile_setup():
     if request.method == 'POST':
         try:
             username = request.form['username']
-            profile_pic_file = request.files.get('profile_pic_file')
-            profile_pic_url = None
+            leaderboard_consent = 'consent' in request.form
 
-            # If user uploaded a file
-            if profile_pic_file and profile_pic_file.filename != '':
-                filename = secure_filename(profile_pic_file.filename)
-                upload_path = os.path.join('static/uploads', filename)
-                profile_pic_file.save(upload_path)
-                profile_pic_url = url_for('static', filename='uploads/' + filename)
-            else:
-                profile_pic_url = None  # fallback (can leave as None or a default image URL)
+            profile_pic_path = ''
+            if 'profile_pic' in request.files:
+                file = request.files['profile_pic']
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file.save(filepath)
+                    profile_pic_path = filepath  # Save path to DB
 
             user = User(
                 username=username,
                 email=session['email'],
-                profile_pic=profile_pic_url,
-                leaderboard_consent='consent' in request.form
+                profile_pic=profile_pic_path,
+                leaderboard_consent=leaderboard_consent
             )
             db.session.add(user)
             db.session.commit()
@@ -177,6 +188,7 @@ def profile_setup():
             flash(f"Error creating profile: {str(e)}", 'error')
 
     return render_template('profile_setup.html')
+
 
 
 @app.route('/profile_found', methods=['GET', 'POST'])
