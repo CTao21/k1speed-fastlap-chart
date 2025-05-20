@@ -307,8 +307,8 @@ def track_detail(track_name):
         sessions.append({
             'date': s.date.strftime('%Y-%m-%d %H:%M'),
             'total_laps': s.total_laps,
-            'best_lap': f"{s.best_lap:.2f}",
-            'avg_lap': f"{s.avg_lap:.2f}",
+            'best_lap': f"{s.best_lap:.3f}",
+            'avg_lap': f"{s.avg_lap:.3f}",
             'fastest_lap_num': s.fastest_lap_num,
             'laps': laps
         })
