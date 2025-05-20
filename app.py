@@ -166,8 +166,8 @@ def profile_setup():
             leaderboard_consent = 'consent' in request.form
 
             profile_pic_path = ''
-            if 'profile_pic' in request.files:
-                file = request.files['profile_pic']
+            if 'profile_pic_file' in request.files:
+                file = request.files['profile_pic_file']
                 if file and allowed_file(file.filename):
                     filename = secure_filename(file.filename)
                     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
