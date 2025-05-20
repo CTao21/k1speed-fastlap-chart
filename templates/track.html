@@ -48,8 +48,8 @@
                     <tr>
                         <td>{{ s.date }}</td>
                         <td>{{ s.total_laps }}</td>
-                        <td>{{ "%.3f"|format(session.best_lap|float) }}</td>
-                        <td>{{ "%.3f"|format(session.avg_lap|float) }}</td>
+                        <td>{{ "%.3f"|format(s.best_lap|float) }}</td>
+                        <td>{{ "%.3f"|format(s.avg_lap|float) }}</td>
                         <td>{{ s.fastest_lap_num }}</td>
                         {% for lap in s.laps %}
                         <td>{{ lap }}</td>
