@@ -314,34 +314,33 @@ def track_detail(track_name):
         })
         dates.append(s.date.strftime('%Y-%m-%d'))
         best_laps.append(float(s.best_lap))
+    
     # Compute improvement sessions only
     improvement_dates = []
     improvement_laps = []
     best_so_far = float('inf')
 
-# Sort sessions by date to track improvement chronologically
-for s in sorted(track.sessions, key=lambda x: x.date):
-    if s.best_lap < best_so_far:
-        best_so_far = s.best_lap
-        improvement_dates.append(s.date.strftime('%Y-%m-%d %H:%M'))
-        improvement_laps.append(float(s.best_lap))
+    for s in sorted(track.sessions, key=lambda x: x.date):
+        if s.best_lap < best_so_far:
+            best_so_far = s.best_lap
+            improvement_dates.append(s.date.strftime('%Y-%m-%d %H:%M'))
+            improvement_laps.append(float(s.best_lap))
 
-    
     # Prepare chart data
     chart_data = {
-    'dates': [s.date.strftime('%Y-%m-%d %H:%M') for s in track.sessions],
-    'best_laps': [float(s.best_lap) for s in track.sessions],
-    'improvement_dates': improvement_dates,
-    'improvement_laps': improvement_laps
-}
+        'dates': [s.date.strftime('%Y-%m-%d %H:%M') for s in track.sessions],
+        'best_laps': [float(s.best_lap) for s in track.sessions],
+        'improvement_dates': improvement_dates,
+        'improvement_laps': improvement_laps
+    }
 
-    
     return render_template('track.html',
-                         track_name=track.display_name,
-                         sessions=sessions,
-                         chart_data=chart_data,
-                         username=user.username,
-                         profile_pic=user.profile_pic)
+                           track_name=track.display_name,
+                           sessions=sessions,
+                           chart_data=chart_data,
+                           username=user.username,
+                           profile_pic=user.profile_pic)
+
 
 
 @app.route('/download/<track_name>.csv')
