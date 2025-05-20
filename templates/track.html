@@ -152,23 +152,32 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   let sortDirections = [];
-  window.sortTable = function (colIndex) {
-    const table = document.getElementById("lapsTable");
-    const tbody = table.tBodies[0];
-    const rows = Array.from(tbody.rows);
-    sortDirections[colIndex] = !sortDirections[colIndex];
-    const dir = sortDirections[colIndex] ? 1 : -1;
+window.sortTable = function (colIndex) {
+  const table = document.getElementById("lapsTable");
+  const tbody = table.tBodies[0];
+  const rows = Array.from(tbody.rows);
+  sortDirections[colIndex] = !sortDirections[colIndex];
+  const dir = sortDirections[colIndex] ? 1 : -1;
 
-    rows.sort((a, b) => {
-      let A = a.cells[colIndex]?.innerText || "";
-      let B = b.cells[colIndex]?.innerText || "";
-      let nA = parseFloat(A), nB = parseFloat(B);
-      if (!isNaN(nA) && !isNaN(nB)) return (nA - nB) * dir;
-      return A.localeCompare(B) * dir;
-    });
+  rows.sort((a, b) => {
+    let A = a.cells[colIndex]?.innerText.trim() || "";
+    let B = b.cells[colIndex]?.innerText.trim() || "";
 
-    rows.forEach(r => tbody.appendChild(r));
-  };
+    // Special handling for date format yyyy-mm-dd
+    if (colIndex === 0) {
+      const dateA = new Date(A);
+      const dateB = new Date(B);
+      return (dateA - dateB) * dir;
+    }
+
+    let nA = parseFloat(A), nB = parseFloat(B);
+    if (!isNaN(nA) && !isNaN(nB)) return (nA - nB) * dir;
+
+    return A.localeCompare(B) * dir;
+  });
+
+  rows.forEach(r => tbody.appendChild(r));
+};
 });
 </script>
 {% endblock %}
