@@ -9,15 +9,35 @@ body {
 /* Card Containers */
 .auth-card,
 .main-card {
-    background: rgba(255, 255, 255, 0.82) url('https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0f/3a/75/ca/bird-s-eye-view-of-kf1.jpg');
-    background-size: cover;
-    background-blend-mode: overlay;
+    position: relative;
+    background: none; /* we move background to pseudo-element */
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.1);
     padding: 2rem;
     margin: 1rem auto;
     max-width: 800px;
     border: 1px solid rgba(255,255,255,0.3);
+    overflow: hidden; /* clip background inside rounded corners */
+}
+
+/* This creates the blended background */
+.auth-card::before,
+.main-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.82) url('https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0f/3a/75/ca/bird-s-eye-view-of-kf1.jpg');
+    background-size: cover;
+    background-blend-mode: overlay;
+    z-index: 0;
+    border-radius: 12px;
+}
+
+/* Make sure all content renders above the background */
+.auth-card > *,
+.main-card > * {
+    position: relative;
+    z-index: 1;
 }
 /* Profile Images */
 .profile-image {
