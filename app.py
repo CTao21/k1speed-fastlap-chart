@@ -400,13 +400,17 @@ def download(track_name):
 
 @app.route('/leaderboard')
 def leaderboard():
-     rows = (db.session
-              .query(Track.display_name)
-              .distinct()
-              .order_by(Track.display_name)
-              .all())
+    # Pull distinct display_names, alphabetically
+    rows = (
+        db.session
+          .query(Track.display_name)
+          .distinct()
+          .order_by(Track.display_name)
+          .all()
+    )
     tracks = [r[0] for r in rows]
     return render_template('leaderboard.html', tracks=tracks)
+
 
 
 
