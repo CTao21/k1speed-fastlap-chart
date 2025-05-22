@@ -158,6 +158,8 @@ def imap_login():
     # GET request fallback
     return render_template('imap_login.html')
 
+            
+
 from werkzeug.utils import secure_filename  # make sure this is at the top
 
 UPLOAD_FOLDER = 'static/uploads'
@@ -170,36 +172,43 @@ def allowed_file(filename):
 @app.route('/profile_setup', methods=['GET', 'POST'])
 def profile_setup():
     if 'email' not in session:
-        return redirect(url_for('imap_login'))
-
-    user = User.query.filter_by(email=session['email']).first()
-    if not user:
-        flash("User not found. Please log in again.", "error")
+        flash("Session expired. Please log in again.", 'error')
         return redirect(url_for('imap_login'))
 
     if request.method == 'POST':
         try:
-            # Update fields
-            user.username = request.form['username']
-            user.leaderboard_consent = 'consent' in request.form
+            username = request.form['username']
+            leaderboard_consent = 'consent' in request.form
 
-            # Handle file upload
+            # Default to blank
+            profile_pic_path = ''
+
+            # Check for file upload
             if 'profile_pic_file' in request.files:
                 file = request.files['profile_pic_file']
-                if file and file.filename != '' and allowed_file(file.filename):
+                if file and allowed_file(file.filename):
                     filename = secure_filename(file.filename)
-                    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-                    upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                    file.save(upload_path)
-                    user.profile_pic = f"/static/uploads/{filename}"
+                    save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file.save(save_path)
+                    profile_pic_path = save_path  # Store relative path
 
+            # Create the user
+            user = User(
+                username=username,
+                email=session['email'],
+                profile_pic=profile_pic_path,
+                leaderboard_consent=leaderboard_consent
+            )
+
+            db.session.add(user)
             db.session.commit()
             return redirect(url_for('results'))
 
         except Exception as e:
-            flash(f"Error updating profile: {str(e)}", 'error')
+            flash(f"Error creating profile: {str(e)}", 'error')
 
-    return render_template('profile_setup.html')  # Form will be blank unless you prefillx
+    return render_template('profile_setup.html')
+
 
 
 
@@ -209,18 +218,20 @@ def profile_setup():
 def profile_found():
     if 'email' not in session:
         return redirect(url_for('imap_login'))
-    
+
     user = User.query.filter_by(email=session['email']).first()
     if not user:
+        flash("User not found. Please log in again.", 'error')
         return redirect(url_for('imap_login'))
-    
+
     if request.method == 'POST':
         return redirect(url_for('import_loading'))
-    
+
     return render_template('profile_found.html',
-                         username=user.username,
-                         profile_pic=user.profile_pic,
-                         consent=user.leaderboard_consent)
+                           username=user.username,
+                           profile_pic=user.profile_pic,
+                           consent=user.leaderboard_consent)
+
 
 @app.route('/import_loading')
 def import_loading():
