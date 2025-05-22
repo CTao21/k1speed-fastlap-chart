@@ -49,67 +49,76 @@ class Session(db.Model):
 
 # Email Processing Core (From Old App)
 def parse_email(msg, k1_name):
-    """Working email parser from old version"""
     try:
-        # Extract HTML body
+        # Try both text/plain and text/html
         body = ""
         if msg.is_multipart():
             for part in msg.walk():
-                if part.get_content_type() == "text/html":
+                ctype = part.get_content_type()
+                if ctype in ["text/plain", "text/html"]:
                     body = part.get_payload(decode=True).decode("utf-8", "ignore")
                     break
         else:
             body = msg.get_payload(decode=True).decode("utf-8", "ignore")
-        
+
         if not body:
+            print("⚠️ Empty email body.")
             return None
 
-        # Clean text
-        txt = re.sub(r"<[^>]+>", " ", body)
-        txt = re.sub(r"\s+", " ", txt).strip()
+        # Normalize: remove tags, handle <br>, collapse whitespace
+        body = re.sub(r'<br\s*/?>', ' ', body, flags=re.IGNORECASE)
+        body = re.sub(r'<[^>]+>', ' ', body)
+        text = re.sub(r'\s+', ' ', body).strip()
 
-        # Extract laps
-        laps = [float(m) for m in re.findall(r"\(\d+\)\s([\d.]+)", txt)]
-        if len(laps) < 5 or min(laps) > 100:
-            return None
+        # Debug output
+        print("🧾 Cleaned text:", text[:500])
 
-        # Extract header
-        header_match = re.search(
+        # Relaxed match: allow optional linebreaks/whitespace
+        header = re.search(
             r"LAPTIMES\s*-\s*([A-Za-z0-9\s]+?)\s+(\d{2}/\d{2}/\d{2})\s+(\d{1,2}:\d{2}\s[AP]M)",
-            txt
+            text, re.IGNORECASE
         )
-        if not header_match:
+        if not header:
+            print("❌ Could not match header.")
             return None
+        loc_raw, date_str, time_str = header.groups()
 
-        loc_raw, date_str, time_str = header_match.groups()
-        
-        # Format location
         location = re.sub(r"\bT(\d)\b", r"Track \1", loc_raw.strip().title())
-        
-        # Parse date
         date = datetime.strptime(f"{date_str} {time_str}", "%m/%d/%y %I:%M %p")
 
-        # Find best lap
-        best_match = re.search(
-            rf"{re.escape(k1_name)}\s+([\d.]+)\s+\d+\s+\d+\s+([\d.]+)",
-            txt,
-            re.IGNORECASE
-        )
-        if not best_match:
+        # Find lap times
+        laps = [float(m) for m in re.findall(r"\(\d+\)\s*([\d.]+)", text)]
+        if len(laps) < 5 or min(laps) > 100:
+            print("❌ Lap data not realistic.")
             return None
+
+        # Name-based best/avg
+        name_match = re.search(
+            rf"{re.escape(k1_name)}\s+([\d.]+)\s+\d+\s+\d+\s+([\d.]+)",
+            text, re.IGNORECASE
+        )
+        if not name_match:
+            print("❌ Couldn't find name match.")
+            return None
+
+        best_lap = float(name_match.group(1))
+        avg_lap = float(name_match.group(2))
+        fastest_lap_num = laps.index(best_lap) + 1
 
         return {
             "raw_location": loc_raw.strip(),
             "display_location": location,
             "date": date,
             "laps": laps,
-            "best_lap": float(best_match.group(1)),
-            "avg_lap": float(best_match.group(2)),
-            "fastest_lap_num": laps.index(float(best_match.group(1))) + 1
+            "best_lap": best_lap,
+            "avg_lap": avg_lap,
+            "fastest_lap_num": fastest_lap_num
         }
+
     except Exception as e:
-        print(f"Parse error: {str(e)}")
+        print(f"‼️ Parse error: {e}")
         return None
+
 
 # Routes (Your Current UI Flow)
 @app.route('/')
