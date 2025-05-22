@@ -387,7 +387,6 @@ def profile_found():
     if request.method=='POST':
         return redirect(url_for('import_loading'))
 
-    # count existing races
     total = sum(len(t.sessions) for t in user.tracks)
     return render_template(
         'profile_found.html',
@@ -396,6 +395,7 @@ def profile_found():
         consent=user.leaderboard_consent,
         total_races=total
     )
+
 
 @app.route('/import_loading')
 def import_loading():
@@ -631,27 +631,7 @@ if __name__=='__main__':
     app.run(debug=True)
 
 
-@app.route('/profile_found', methods=['GET','POST'])
-def profile_found():
-    if 'email' not in session:
-        return redirect(url_for('imap_login'))
-    user = User.query.filter_by(email=session['email']).first()
-    if not user:
-        flash("User not found, please log in again", 'error')
-        return redirect(url_for('imap_login'))
 
-    if request.method=='POST':
-        return redirect(url_for('import_loading'))
-
-    # count existing races
-    total = sum(len(t.sessions) for t in user.tracks)
-    return render_template(
-        'profile_found.html',
-        username=user.username,
-        profile_pic=user.profile_pic,
-        consent=user.leaderboard_consent,
-        total_races=total
-    )
 
 @app.route('/import_loading')
 def import_loading():
