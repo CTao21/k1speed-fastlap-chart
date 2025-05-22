@@ -196,7 +196,7 @@ def profile_setup():
             )
             db.session.add(user)
             db.session.commit()
-            return redirect(url_for('results'))
+            return redirect(url_for('import_loading'))
         except Exception as e:
             flash(f"Error: {e}", 'error')
 
