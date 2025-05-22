@@ -249,7 +249,7 @@ def import_results():
         mail.login(session['email'], session['password'])
         mail.select('inbox')
 
-        # Search for emails from K1 Speed
+        # Adjusted FROM filters just in case
         status, messages = mail.search(
             None,
             '(OR FROM "member@from.k1speed.com" FROM "noreply@from.k1speed.com")'
@@ -260,22 +260,27 @@ def import_results():
         email_ids = messages[0].split()
         user = User.query.filter_by(email=session['email']).first()
         imported = 0
+        skipped = 0
 
         for email_id in email_ids:
             try:
                 status, msg_data = mail.fetch(email_id, '(RFC822)')
                 if status != 'OK' or not msg_data or not isinstance(msg_data[0], tuple):
                     print(f"⚠️ Skipping malformed message ID {email_id}")
+                    skipped += 1
                     continue
 
                 raw_email = msg_data[0][1]
+                if not isinstance(raw_email, bytes):
+                    print(f"⚠️ Skipping non-bytes message ID {email_id}")
+                    skipped += 1
+                    continue
+
                 msg = message_from_bytes(raw_email)
-
-                # Optional: debug headers
-                print("Processing email:", msg.get("Subject"), "From:", msg.get("From"))
-
                 race_data = parse_email(msg, session['k1_name'])
+
                 if not race_data:
+                    skipped += 1
                     continue
 
                 # Track handling
@@ -293,7 +298,7 @@ def import_results():
                     db.session.add(track)
                     db.session.commit()
 
-                # Avoid duplicate sessions
+                # Check for duplicate session
                 existing = Session.query.filter_by(
                     track_id=track.id,
                     date=race_data['date']
@@ -313,15 +318,23 @@ def import_results():
                     imported += 1
 
             except Exception as e:
-                print(f"Error processing email ID {email_id}: {str(e)}")
+                print(f"Error processing email ID {email_id}: {e}")
+                skipped += 1
                 continue
 
         db.session.commit()
-        mail.close()
-        return jsonify({'status': 'success', 'imported': imported})
+        mail.logout()
+
+        return jsonify({
+            'status': 'success',
+            'imported': imported,
+            'skipped': skipped,
+            'total': len(email_ids)
+        })
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
+
 
 
 @app.route('/results')
