@@ -1,27 +1,34 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="container mt-5">
   <div class="auth-card">
-    <h2 class="mb-4">Create Profile</h2>
+    <h2 class="mb-4">Create / Update Profile</h2>
+
+    {% with messages = get_flashed_messages(category_filter=["error"]) %}
+    {% if messages %}
+      <div class="alert alert-danger">{{ messages[0] }}</div>
+    {% endif %}
+    {% endwith %}
+
     <form method="POST">
       <div class="mb-3">
-        <label for="username" class="form-label">Username</label>
+        <label class="form-label">Username</label>
         <input
           type="text"
-          id="username"
           name="username"
           class="form-control"
           required
+          value="{{ username }}"
         >
       </div>
 
       <div class="mb-4 form-check">
         <input
           type="checkbox"
-          id="consent"
           name="consent"
           class="form-check-input"
+          id="consent"
+          {% if consent %}checked{% endif %}
         >
         <label class="form-check-label" for="consent">
           Include me on leaderboards

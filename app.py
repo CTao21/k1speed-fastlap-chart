@@ -163,25 +163,39 @@ def imap_login():
 @app.route('/profile_setup', methods=['GET','POST'])
 def profile_setup():
     if 'email' not in session:
-        flash("Please log in first", 'error')
+        flash("Please log in first", "error")
         return redirect(url_for('imap_login'))
+
+    # Try to load an existing user (if they've already set up once)
+    existing = User.query.filter_by(email=session['email']).first()
 
     if request.method == 'POST':
         try:
-            user = User(
-                username=request.form['username'],
-                email=session['email'],
-                leaderboard_consent=('consent' in request.form)
-            )
-            db.session.add(user)
-            db.session.commit()
+            if existing:
+                # Update the existing record
+                existing.username            = request.form['username']
+                existing.leaderboard_consent = ('consent' in request.form)
+                db.session.commit()
+            else:
+                # Create a new one
+                new_user = User(
+                    username=request.form['username'],
+                    email=session['email'],
+                    leaderboard_consent=('consent' in request.form)
+                )
+                db.session.add(new_user)
+                db.session.commit()
 
             return redirect(url_for('results'))
 
         except Exception as e:
-            flash(f"Error creating profile: {e}", 'error')
+            flash(f"Error saving profile: {e}", "error")
 
-    return render_template('profile_setup.html')
+    return render_template(
+        'profile_setup.html',
+        username = existing.username if existing else "",
+        consent  = existing.leaderboard_consent if existing else False
+    )
 
 
 @app.route('/profile_found', methods=['GET','POST'])
@@ -386,8 +400,14 @@ def download(track_name):
 
 @app.route('/leaderboard')
 def leaderboard():
-    tracks = [r[0] for r in db.session.query(Track.display_name).distinct().all()]
+     rows = (db.session
+              .query(Track.display_name)
+              .distinct()
+              .order_by(Track.display_name)
+              .all())
+    tracks = [r[0] for r in rows]
     return render_template('leaderboard.html', tracks=tracks)
+
 
 
 @app.route('/leaderboard/<track_name>')
