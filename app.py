@@ -215,7 +215,7 @@ def profile_found():
         return redirect(url_for('imap_login'))
 
     if request.method == 'POST':
-        return redirect(url_for('import_loading'))
+        return redirect(url_for('results'))
 
     total = sum(len(t.sessions) for t in user.tracks)
     return render_template('profile_found.html',

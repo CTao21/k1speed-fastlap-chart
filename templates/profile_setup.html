@@ -1,22 +1,25 @@
+<!-- templates/profile_setup.html -->
 {% extends "base.html" %}
 
 {% block content %}
 <div class="container mt-5">
   <div class="auth-card">
     <h2 class="mb-4">Create Profile</h2>
-
     <form method="POST" enctype="multipart/form-data">
       <div class="mb-3">
         <label class="form-label">Username</label>
         <input type="text" name="username" class="form-control" required>
       </div>
-
       <div class="mb-3">
         <label class="form-label">Upload Profile Picture</label>
-        <input type="file" name="profile_pic_file" class="form-control" accept="image/*">
-        <small class="text-muted">Optional.</small>
+        <input type="file"
+               name="profile_pic_file"
+               class="form-control"
+               accept="image/*">
+        <small class="text-muted">
+          Optional. Upload from your photo library or take a picture.
+        </small>
       </div>
-
       <div class="mb-4 form-check">
         <input type="checkbox" name="consent" class="form-check-input" id="consent">
         <label class="form-check-label" for="consent">
@@ -25,10 +28,10 @@
       </div>
 
       <div class="d-grid gap-2">
-        <button type="submit" class="btn btn-primary">
-          Create Profile &amp; Import Races
-        </button>
-        <a href="{{ url_for('imap_login') }}" class="btn btn-secondary">Back</a>
+        <button type="submit" class="btn btn-primary">Save Profile</button>
+        <a href="{{ url_for('imap_login') }}" class="btn btn-secondary">
+          Back to Login
+        </a>
       </div>
     </form>
   </div>
