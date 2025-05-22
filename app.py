@@ -397,11 +397,7 @@ def profile_found():
     )
 
 
-@app.route('/import_loading')
-def import_loading():
-    if 'email' not in session:
-        return redirect(url_for('imap_login'))
-    return render_template('import_loading.html')
+
 
 @app.route('/import_results')
 def import_results():
