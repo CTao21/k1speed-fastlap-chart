@@ -158,11 +158,6 @@ def imap_login():
     # GET request fallback
     return render_template('imap_login.html')
 
-            
-        except Exception as e:
-            flash(f"Login failed: {str(e)}", 'error')
-    return render_template('imap_login.html')
-
 from werkzeug.utils import secure_filename  # make sure this is at the top
 
 UPLOAD_FOLDER = 'static/uploads'
