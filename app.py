@@ -238,6 +238,7 @@ def import_loading():
     if 'email' not in session:
         return redirect(url_for('imap_login'))
     return render_template('import_loading.html')
+
 @app.route('/import_results')
 def import_results():
     if 'email' not in session:
@@ -261,34 +262,40 @@ def import_results():
 
         for email_id in email_ids:
             try:
+                # First try RFC822 fetch
                 status, msg_data = mail.fetch(email_id, '(RFC822)')
                 
-                # Fix for iCloud's IMAP response format
-                if isinstance(msg_data[0], tuple) and len(msg_data[0]) > 1:
-                    if isinstance(msg_data[0][1], int):
-                        # Handle case where iCloud returns size instead of content
-                        _, msg_data = mail.fetch(email_id, '(BODY.PEEK[])')
-                    
-                    # Get the actual message content
-                    msg_part = msg_data[0][1]
-                    if isinstance(msg_part, bytes):
-                        msg = message_from_bytes(msg_part)
-                    elif isinstance(msg_part, str):
-                        msg = message_from_string(msg_part)
-                    else:
-                        print(f"Skipping message ID {email_id} - unexpected format")
-                        continue
-                else:
-                    print(f"Skipping message ID {email_id} - malformed structure")
+                # Handle iCloud's IMAP response format
+                msg_bytes = None
+                if msg_data and msg_data[0]:
+                    if isinstance(msg_data[0], tuple) and len(msg_data[0]) > 1:
+                        # Standard case: (b'123 (RFC822 {...}', b'actual message bytes...')
+                        msg_bytes = msg_data[0][1]
+                    elif isinstance(msg_data[0], bytes):
+                        # Sometimes iCloud returns raw bytes
+                        msg_bytes = msg_data[0]
+                
+                # If we didn't get bytes, try BODY.PEEK as fallback
+                if not isinstance(msg_bytes, bytes):
+                    status, msg_data = mail.fetch(email_id, '(BODY.PEEK[])')
+                    if msg_data and msg_data[0]:
+                        if isinstance(msg_data[0], tuple) and len(msg_data[0]) > 1:
+                            msg_bytes = msg_data[0][1]
+                        elif isinstance(msg_data[0], bytes):
+                            msg_bytes = msg_data[0]
+                
+                if not isinstance(msg_bytes, bytes):
+                    print(f"Skipping message ID {email_id} - couldn't extract message content")
                     continue
 
+                msg = message_from_bytes(msg_bytes)
                 race_data = parse_email(msg, session['k1_name'])
                 
                 if not race_data:
                     print(f"Skipping unparseable message ID {email_id}")
                     continue
 
-                # Your existing track handling logic
+                # Your existing track/session handling logic
                 track = Track.query.filter_by(
                     raw_name=race_data['raw_location'],
                     user_id=user.id
@@ -303,7 +310,6 @@ def import_results():
                     db.session.add(track)
                     db.session.commit()
 
-                # Check for existing session
                 existing = Session.query.filter_by(
                     track_id=track.id,
                     date=race_data['date']
@@ -328,9 +334,11 @@ def import_results():
 
         db.session.commit()
         mail.close()
+        mail.logout()
         return jsonify({'status': 'success', 'imported': imported})
     
     except Exception as e:
+        print(f"Critical IMAP error: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)})
 
 
