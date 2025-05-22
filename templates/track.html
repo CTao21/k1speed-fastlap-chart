@@ -10,6 +10,7 @@
             </a>
         </div>
 
+        <!-- Chart Section -->
         <div class="mt-3">
             <div class="d-flex justify-content-between align-items-center">
                 <h4>Progress Over Time</h4>
@@ -29,10 +30,38 @@
             </div>
         </div>
 
-        <!-- Table content remains the same -->
+        <!-- Session Table Section --> 
         <div class="table-responsive mt-4">
             <table id="lapsTable" class="table table-striped">
-                <!-- Table headers and body remain unchanged -->
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)"><u>Date</u> <span class="sort-icons">⇅</span></th>
+                        <th onclick="sortTable(1)"><u>Total Laps</u> <span class="sort-icons">⇅</span></th>
+                        <th onclick="sortTable(2)"><u>Best Lap</u> <span class="sort-icons">⇅</span></th>
+                        <th onclick="sortTable(3)"><u>Avg Lap</u> <span class="sort-icons">⇅</span></th>
+                        <th onclick="sortTable(4)"><u>Fastest Lap #</u> <span class="sort-icons">⇅</span></th>
+                        {% for i in range(1, 17) %}
+                        <th onclick="sortTable({{ i + 4 }})"><u>Lap {{ i }}</u> <span class="sort-icons">⇅</span></th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in sessions %}
+                    <tr>
+                        <td data-sort="{{ s.date }}">{{ s.date }}</td>
+                        <td>{{ s.total_laps }}</td>
+                        <td>{{ "%.3f"|format(s.best_lap|float) }}</td>
+                        <td>{{ "%.3f"|format(s.avg_lap|float) }}</td>
+                        <td>{{ s.fastest_lap_num }}</td>
+                        {% for lap in s.laps %}
+                        <td>{{ lap }}</td>
+                        {% endfor %}
+                        {% for i in range(16 - s.laps|length) %}
+                        <td></td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
             </table>
         </div>
     </div>
@@ -40,13 +69,14 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    // Chart initialization code (same as before)
     const ctx = document.getElementById('progressChart');
     if (!ctx) return;
 
     const labels = {{ chart_data.dates | tojson }};
     const data = {{ chart_data.best_laps | tojson }};
 
-    // Improvement data calculation (unchanged)
+    // Improvement data calculation
     const improvementLabels = [];
     const improvementData = [];
     let bestSoFar = Infinity;
@@ -63,10 +93,10 @@ document.addEventListener("DOMContentLoaded", function () {
     window.chart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: labels,  // Default to all labels
+            labels: labels,
             datasets: [{
                 label: 'Best Lap Time (s)',
-                data: data,  // Default to all data
+                data: data,
                 borderColor: 'rgb(75, 192, 192)',
                 tension: 0.1,
                 pointBackgroundColor: 'rgb(75, 192, 192)',
@@ -108,15 +138,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Rest of your functions remain unchanged
-    function getWeek(dateStr) {
-        const [y, m, d] = dateStr.split('-').map(Number);
-        const dt = new Date(Date.UTC(y, m - 1, d));
-        dt.setUTCDate(dt.getUTCDate() + 4 - (dt.getUTCDay() || 7));
-        const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
-        return Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
-    }
-
+    // View switching logic (same as before)
     function updateChartResolution(mode) {
         let grouped = {};
         if (mode === 'improvement') {
@@ -140,7 +162,6 @@ document.addEventListener("DOMContentLoaded", function () {
             chart.data.labels = Object.keys(grouped);
             chart.data.datasets[0].data = Object.values(grouped);
         }
-
         chart.update();
     }
 
@@ -152,6 +173,40 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Table sorting functions remain unchanged
+    let sortDirections = [];
+    window.sortTable = function (colIndex) {
+        const table = document.getElementById("lapsTable");
+        const tbody = table.tBodies[0];
+        const rows = Array.from(tbody.rows);
+        sortDirections[colIndex] = !sortDirections[colIndex];
+        const dir = sortDirections[colIndex] ? 1 : -1;
+
+        rows.sort((a, b) => {
+            let A = a.cells[colIndex]?.innerText.trim() || "";
+            let B = b.cells[colIndex]?.innerText.trim() || "";
+
+            if (colIndex === 0) { // Special handling for dates
+                const dateA = new Date(A);
+                const dateB = new Date(B);
+                return (dateA - dateB) * dir;
+            }
+
+            let nA = parseFloat(A), nB = parseFloat(B);
+            if (!isNaN(nA) && !isNaN(nB)) return (nA - nB) * dir;
+
+            return A.localeCompare(B) * dir;
+        });
+
+        rows.forEach(r => tbody.appendChild(r));
+    };
 });
+
+function getWeek(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    dt.setUTCDate(dt.getUTCDate() + 4 - (dt.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+    return Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
+}
 </script>
 {% endblock %}
