@@ -249,10 +249,10 @@ def import_results():
         mail.login(session['email'], session['password'])
         mail.select('inbox')
 
-        # Adjusted FROM filters just in case
+        # Search for K1 Speed race results
         status, messages = mail.search(
             None,
-            '(OR FROM "member@from.k1speed.com" FROM "noreply@from.k1speed.com")'
+            '(OR FROM "member@from.k1speed.com" FROM "noreply@from.k1speed.com") SUBJECT "Your Race Results"'
         )
         if status != 'OK':
             return jsonify({'status': 'error', 'message': 'Email search failed'})
@@ -260,33 +260,29 @@ def import_results():
         email_ids = messages[0].split()
         user = User.query.filter_by(email=session['email']).first()
         imported = 0
-        skipped = 0
 
-        for email_id in email_ids:
+        for eid in email_ids:
             try:
-                status, msg_data = mail.fetch(email_id, '(RFC822)')
+                eid_str = eid.decode() if isinstance(eid, bytes) else str(eid)
+                status, msg_data = mail.fetch(eid_str, '(RFC822)')
                 if status != 'OK' or not msg_data or not isinstance(msg_data[0], tuple):
-                    print(f"⚠️ Skipping malformed message ID {email_id}")
-                    skipped += 1
+                    print(f"⚠️ Skipping malformed message ID {eid}")
                     continue
 
                 raw_email = msg_data[0][1]
-                if not isinstance(raw_email, bytes):
-                    print(f"⚠️ Skipping non-bytes message ID {email_id}")
-                    skipped += 1
+                if isinstance(raw_email, int):
+                    print(f"⚠️ Skipping invalid raw email format for ID {eid}")
                     continue
 
                 msg = message_from_bytes(raw_email)
                 race_data = parse_email(msg, session['k1_name'])
 
                 if not race_data:
-                    skipped += 1
                     continue
 
-                # Track handling
+                # Create or find track
                 track = Track.query.filter_by(
-                    raw_name=race_data['raw_location'],
-                    user_id=user.id
+                    raw_name=race_data['raw_location'], user_id=user.id
                 ).first()
 
                 if not track:
@@ -298,10 +294,9 @@ def import_results():
                     db.session.add(track)
                     db.session.commit()
 
-                # Check for duplicate session
+                # Check for duplicate sessions
                 existing = Session.query.filter_by(
-                    track_id=track.id,
-                    date=race_data['date']
+                    track_id=track.id, date=race_data['date']
                 ).first()
 
                 if not existing:
@@ -318,22 +313,16 @@ def import_results():
                     imported += 1
 
             except Exception as e:
-                print(f"Error processing email ID {email_id}: {e}")
-                skipped += 1
+                print(f"❌ Error processing message ID {eid}: {str(e)}")
                 continue
 
         db.session.commit()
-        mail.logout()
-
-        return jsonify({
-            'status': 'success',
-            'imported': imported,
-            'skipped': skipped,
-            'total': len(email_ids)
-        })
+        mail.close()
+        return jsonify({'status': 'success', 'imported': imported})
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
+
 
 
 
