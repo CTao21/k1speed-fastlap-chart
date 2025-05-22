@@ -252,7 +252,7 @@ def import_results():
         # Old app's working email search
         status, messages = mail.search(
             None,
-            '(OR FROM "member@from.k1speed.com" FROM "noreply@from.k1speed.com") SUBJECT "Your Race Results"'
+            '(OR FROM "member@from.k1speed.com" FROM "noreply@from.k1speed.com")'
         )
         if status != 'OK':
             return jsonify({'status': 'error', 'message': 'Email search failed'})
