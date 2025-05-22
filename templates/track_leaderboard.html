@@ -15,63 +15,98 @@
             <!-- Fastest Laps Section -->
             <div class="leaderboard-section">
                 <h4>Fastest Laps</h4>
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Racer</th>
-                            <th>Time</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for racer in best_laps %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td>{{ racer.username }}</td>
-                            <td class="best-lap">{{ "%.3f"|format(racer.best_lap) }}s</td>
-                            <td>{{ racer.best_date }}</td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="4" class="text-center py-3">No data available</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-container-ios">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Racer</th>
+                                <th>Time</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for racer in best_laps %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ racer.username }}</td>
+                                <td class="best-lap">{{ "%.3f"|format(racer.best_lap) }}s</td>
+                                <td>{{ racer.best_date }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-3">No data available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- Most Races Section -->
             <div class="leaderboard-section mt-5">
                 <h4>Most Races</h4>
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Racer</th>
-                            <th>Races</th>
-                            <th>First Race</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for racer in most_sessions %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td>{{ racer.username }}</td>
-                            <td>{{ racer.session_count }}</td>
-                            <td>{{ racer.first_date.strftime('%Y-%m-%d') }}</td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="4" class="text-center py-3">No data available</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-container-ios">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Racer</th>
+                                <th>Races</th>
+                                <th>First Race</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for racer in most_sessions %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ racer.username }}</td>
+                                <td>{{ racer.session_count }}</td>
+                                <td>{{ racer.first_date.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-3">No data available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
         </div>
     </div>
 </div>
-{% endblock %}
 
+<style>
+    /* iOS-friendly scrolling tables */
+    .table-container-ios {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        width: 100%;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    
+    .table-container-ios table {
+        min-width: 600px; /* Ensures table doesn't collapse on mobile */
+        width: 100%;
+    }
+    
+    /* Better touch targets for mobile */
+    .table-container-ios tbody tr {
+        height: 50px; /* Larger touch targets */
+    }
+    
+    /* Visual scroll indicator for iOS */
+    .table-container-ios::-webkit-scrollbar {
+        -webkit-appearance: none;
+        height: 5px;
+    }
+    
+    .table-container-ios::-webkit-scrollbar-thumb {
+        border-radius: 4px;
+        background-color: rgba(0,0,0,.2);
+    }
+</style>
+{% endblock %}
