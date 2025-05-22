@@ -120,27 +120,44 @@ def home():
 def imap_login():
     if request.method == 'POST':
         try:
+            # Clear previous session
             session.clear()
-            session['k1_name'] = request.form['k1_name']
-            email_user = request.form['email_user']
-            email_domain = request.form['email_domain']
+
+            # Extract form values
+            k1_name = request.form.get('k1_name')
+            email_user = request.form.get('email_user')
+            email_domain = request.form.get('email_domain')
+            password = request.form.get('password')
+            imap_server = request.form.get('imap_server')
+            imap_port = int(request.form.get('imap_port'))
+
             full_email = f"{email_user}@{email_domain}"
-            
-            imap_server = request.form['imap_server']
-            imap_port = int(request.form['imap_port'])
-            password = request.form['password']
-            
+
+            # Attempt IMAP login to validate credentials
             with imaplib.IMAP4_SSL(imap_server, imap_port) as mail:
                 mail.login(full_email, password)
                 mail.select('inbox')
-            
+
+            # Store values in session
             session['email'] = full_email
+            session['k1_name'] = k1_name
             session['imap_server'] = imap_server
             session['imap_port'] = imap_port
             session['password'] = password
-            
+
+            # Check if user already exists
             user = User.query.filter_by(email=full_email).first()
-            return redirect(url_for('profile_found')) if user else redirect(url_for('profile_setup'))
+            if user:
+                return redirect(url_for('profile_found'))
+            else:
+                return redirect(url_for('profile_setup'))
+
+        except Exception as e:
+            flash(f"Login failed: {str(e)}", 'error')
+
+    # GET request fallback
+    return render_template('imap_login.html')
+
             
         except Exception as e:
             flash(f"Login failed: {str(e)}", 'error')
