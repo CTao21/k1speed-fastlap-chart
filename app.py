@@ -243,20 +243,20 @@ def import_loading():
 def import_results():
     if 'email' not in session:
         return jsonify({'status': 'error', 'message': 'Not logged in'})
-    
+
     try:
         mail = imaplib.IMAP4_SSL(session['imap_server'], session['imap_port'])
         mail.login(session['email'], session['password'])
         mail.select('inbox')
-        
-        # Old app's working email search
+
+        # Search for emails from K1 Speed
         status, messages = mail.search(
             None,
             '(OR FROM "member@from.k1speed.com" FROM "noreply@from.k1speed.com")'
         )
         if status != 'OK':
             return jsonify({'status': 'error', 'message': 'Email search failed'})
-        
+
         email_ids = messages[0].split()
         user = User.query.filter_by(email=session['email']).first()
         imported = 0
@@ -264,9 +264,17 @@ def import_results():
         for email_id in email_ids:
             try:
                 status, msg_data = mail.fetch(email_id, '(RFC822)')
-                msg = message_from_bytes(msg_data[0][1])
+                if status != 'OK' or not msg_data or not isinstance(msg_data[0], tuple):
+                    print(f"⚠️ Skipping malformed message ID {email_id}")
+                    continue
+
+                raw_email = msg_data[0][1]
+                msg = message_from_bytes(raw_email)
+
+                # Optional: debug headers
+                print("Processing email:", msg.get("Subject"), "From:", msg.get("From"))
+
                 race_data = parse_email(msg, session['k1_name'])
-                
                 if not race_data:
                     continue
 
@@ -275,7 +283,7 @@ def import_results():
                     raw_name=race_data['raw_location'],
                     user_id=user.id
                 ).first()
-                
+
                 if not track:
                     track = Track(
                         raw_name=race_data['raw_location'],
@@ -285,12 +293,12 @@ def import_results():
                     db.session.add(track)
                     db.session.commit()
 
-                # Check for existing session
+                # Avoid duplicate sessions
                 existing = Session.query.filter_by(
                     track_id=track.id,
                     date=race_data['date']
                 ).first()
-                
+
                 if not existing:
                     new_session = Session(
                         date=race_data['date'],
@@ -305,15 +313,16 @@ def import_results():
                     imported += 1
 
             except Exception as e:
-                print(f"Error processing email: {str(e)}")
+                print(f"Error processing email ID {email_id}: {str(e)}")
                 continue
 
         db.session.commit()
         mail.close()
         return jsonify({'status': 'success', 'imported': imported})
-    
+
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
+
 
 @app.route('/results')
 def results():
