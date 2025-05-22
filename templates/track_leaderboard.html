@@ -12,10 +12,10 @@
 
         <div class="leaderboard-columns">
 
-            <!-- Fastest Laps Section (moved to top) -->
+            <!-- Fastest Laps Section -->
             <div class="leaderboard-section">
                 <h4>Fastest Laps</h4>
-                <table class="leaderboard-table table table-striped">
+                <table class="table table-striped">
                     <thead>
                         <tr>
                             <th>Rank</th>
@@ -28,13 +28,7 @@
                         {% for racer in best_laps %}
                         <tr>
                             <td>{{ loop.index }}</td>
-                            <td class="d-flex align-items-center">
-                                {% if racer.profile_pic %}
-                                <img src="{{ url_for('static', filename=racer.profile_pic) }}"
-                                     class="leaderboard-pic me-2" alt="{{ racer.username }}">
-                                {% endif %}
-                                {{ racer.username }}
-                            </td>
+                            <td>{{ racer.username }}</td>
                             <td class="best-lap">{{ "%.3f"|format(racer.best_lap) }}s</td>
                             <td>{{ racer.best_date }}</td>
                         </tr>
@@ -50,7 +44,7 @@
             <!-- Most Races Section -->
             <div class="leaderboard-section mt-5">
                 <h4>Most Races</h4>
-                <table class="leaderboard-table table table-striped">
+                <table class="table table-striped">
                     <thead>
                         <tr>
                             <th>Rank</th>
@@ -63,13 +57,7 @@
                         {% for racer in most_sessions %}
                         <tr>
                             <td>{{ loop.index }}</td>
-                            <td class="d-flex align-items-center">
-                                {% if racer.profile_pic %}
-                                <img src="{{ url_for('static', filename=racer.profile_pic) }}"
-                                     class="leaderboard-pic me-2" alt="{{ racer.username }}">
-                                {% endif %}
-                                {{ racer.username }}
-                            </td>
+                            <td>{{ racer.username }}</td>
                             <td>{{ racer.session_count }}</td>
                             <td>{{ racer.first_date.strftime('%Y-%m-%d') }}</td>
                         </tr>

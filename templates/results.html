@@ -3,11 +3,8 @@
 {% block content %}
 <div class="container mt-4">
 
-  <!-- Profile header + action buttons -->
-  <div class="main-card d-flex align-items-center mb-4 p-4">
-    <img src="{{ url_for('static', filename=profile_pic) }}"
-         class="profile-image me-4"
-         alt="{{ username }}'s photo">
+  <!-- Profile header + action buttons (without picture) -->
+  <div class="main-card mb-4 p-4">
     <div>
       <h3 class="mb-1">{{ username }}</h3>
       <p class="mb-1"><strong>Total Races:</strong>

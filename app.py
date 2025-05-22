@@ -23,11 +23,6 @@ app.secret_key = os.urandom(24)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////data/data.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# file uploads
-UPLOAD_FOLDER = 'static/uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
 db = SQLAlchemy(app)
 
 # --- Models ---
@@ -35,7 +30,6 @@ class User(db.Model):
     id                  = db.Column(db.Integer, primary_key=True)
     username            = db.Column(db.String(80), nullable=False)
     email               = db.Column(db.String(120), unique=True, nullable=False)
-    profile_pic         = db.Column(db.String(200))
     leaderboard_consent = db.Column(db.Boolean, default=False)
     tracks              = db.relationship('Track', backref='user', lazy=True)
 
@@ -58,10 +52,6 @@ class Session(db.Model):
 
 
 # --- Helpers ---
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 def extract_email_body(msg):
     """Safely pull out first text/plain or text/html part."""
     if msg.is_multipart():
@@ -107,7 +97,7 @@ def parse_email(msg, k1_name):
 
     # extract lap times
     laps = [float(x) for x in re.findall(r"\(\d+\)\s*([\d.]+)", text)]
-    if len(laps) < 5 or min(laps) > 100:
+    if len(laps) < 1 or min(laps) > 100:
         print("❌ Invalid lap data")
         return None
 
@@ -178,24 +168,14 @@ def profile_setup():
 
     if request.method == 'POST':
         try:
-            pic_path = ''
-            file = request.files.get('profile_pic_file')
-            if file and allowed_file(file.filename):
-                fn = secure_filename(file.filename)
-                save_to = os.path.join(app.config['UPLOAD_FOLDER'], fn)
-                file.save(save_to)
-                pic_path = save_to
-
             user = User(
                 username=request.form['username'],
                 email=session['email'],
-                profile_pic=pic_path,
                 leaderboard_consent=('consent' in request.form)
             )
             db.session.add(user)
             db.session.commit()
 
-            # skip import here → go straight to results
             return redirect(url_for('results'))
 
         except Exception as e:
@@ -220,7 +200,6 @@ def profile_found():
     total = sum(len(t.sessions) for t in user.tracks)
     return render_template('profile_found.html',
                            username=user.username,
-                           profile_pic=user.profile_pic,
                            consent=user.leaderboard_consent,
                            total_races=total)
 
@@ -330,7 +309,6 @@ def results():
 
     return render_template('results.html',
                            username=user.username,
-                           profile_pic=user.profile_pic,
                            tracks=tracks_data)
 
 
@@ -375,8 +353,7 @@ def track_detail(track_name):
                            track_name=t.display_name,
                            sessions=sessions,
                            chart_data=chart_data,
-                           username=user.username,
-                           profile_pic=user.profile_pic)
+                           username=user.username)
 
 
 @app.route('/download/<track_name>.csv')
@@ -426,7 +403,6 @@ def track_leaderboard(track_name):
         # tally sessions
         ent = most_sessions.setdefault(u.id, {
             'username': u.username,
-            'profile_pic': u.profile_pic,
             'session_count': 0,
             'first_date': min(s.date for s in t.sessions)
         })
@@ -436,7 +412,6 @@ def track_leaderboard(track_name):
         b = min(t.sessions, key=lambda s: s.best_lap)
         best_laps.append({
             'username': u.username,
-            'profile_pic': u.profile_pic,
             'best_lap': b.best_lap,
             'best_date': b.date.strftime('%Y-%m-%d')
         })
