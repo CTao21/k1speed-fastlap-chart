@@ -25,6 +25,14 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+
+# --- Track-specific lap time cutoffs ---
+LAP_TIME_CUTOFFS = {
+    'Burbank': 23.2,
+    'Thousand Oaks': 27.5
+}
+
+
 # --- Models ---
 class User(db.Model):
     id                  = db.Column(db.Integer, primary_key=True)
@@ -71,6 +79,13 @@ def extract_email_body(msg):
             pass
     return None
 
+def filter_laps_by_cutoff(display_location, laps):
+    cutoff = LAP_TIME_CUTOFFS.get(display_location)
+    if not cutoff:
+        return laps  # No cutoff defined, keep all laps
+    return [lap for lap in laps if lap >= cutoff]
+
+
 def parse_email(msg, k1_name):
     """Parse a K1 speed results email into structured data."""
     body = extract_email_body(msg)
@@ -97,7 +112,9 @@ def parse_email(msg, k1_name):
 
     # extract lap times
     laps = [float(x) for x in re.findall(r"\(\d+\)\s*([\d.]+)", text)]
-    if len(laps) < 1 or min(laps) > 100:
+    laps = filter_laps_by_cutoff(display_loc, laps)
+
+    if len(laps) < 1 or min(laps) > 300:
         print("❌ Invalid lap data")
         return None
 
