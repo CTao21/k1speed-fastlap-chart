@@ -248,21 +248,52 @@ def import_results():
         return jsonify(status='error', message='Not logged in')
 
     try:
+        # 1) Log in to IMAP
         M = imaplib.IMAP4_SSL(session['imap_server'], session['imap_port'])
         M.login(session['email'], session['password'])
         M.select('INBOX')
 
-        typ, msgs = M.search(
-            None,
-            '(OR FROM "member@from.k1speed.com" FROM "noreply@from.k1speed.com") SUBJECT "Your Race Results"'
+        # 2) Find the user & latest imported session date
+        user = User.query.filter_by(email=session['email']).first()
+
+        latest_row = (
+            db.session
+              .query(Session.date)
+              .join(Track, Track.id == Session.track_id)
+              .filter(Track.user_id == user.id)
+              .order_by(Session.date.desc())
+              .first()
         )
+        if latest_row:
+            last_dt = latest_row[0]
+            since_str = last_dt.strftime("%d-%b-%Y")  # e.g. "25-May-2025"
+        else:
+            since_str = None
+
+        # 3) Build IMAP search criteria
+        if since_str:
+            search_criteria = (
+                f'(SINCE {since_str}) '
+                '(OR FROM "member@from.k1speed.com" '
+                'FROM "noreply@from.k1speed.com") '
+                'SUBJECT "Your Race Results"'
+            )
+        else:
+            search_criteria = (
+                '(OR FROM "member@from.k1speed.com" '
+                'FROM "noreply@from.k1speed.com") '
+                'SUBJECT "Your Race Results"'
+            )
+
+        typ, msgs = M.search(None, search_criteria)
         if typ != 'OK':
             return jsonify(status='error', message='Email search failed')
 
         ids = msgs[0].split()
-        user = User.query.filter_by(email=session['email']).first()
         imported = 0
 
+        # 4) Loop through returned message IDs exactly as before,
+        #    skipping duplicates by checking Session(track_id, date).
         for eid in ids:
             typ, data = M.fetch(eid, '(RFC822)')
             raw = None
@@ -293,6 +324,7 @@ def import_results():
                 db.session.add(track)
                 db.session.commit()
 
+            # Only insert if that exact (track_id, date) isn’t already in the DB
             if not Session.query.filter_by(track_id=track.id, date=rd['date']).first():
                 s = Session(
                     date=rd['date'],
