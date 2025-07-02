@@ -14,13 +14,13 @@
         <div class="mt-3">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div>
-                    <label for="timeFilter" class="form-label me-2">Chart View:</label>
+                    <label for="timeFilter" class="form-label me-2">Display Mode:</label>
                     <select id="timeFilter" class="form-select form-select-sm d-inline w-auto">
-                        <option value="improvement">Improvement</option>
-                        <option value="all" selected>All Time</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="daily">Daily</option>
+                        <option value="improvement">Personal Bests Only</option>
+                        <option value="all" selected>Every Race</option>
+                        <option value="monthly">Fastest Race Each Month</option>
+                        <option value="weekly">Fastest Race Each Week</option>
+                        <option value="daily">Fastest Race Each Day</option>
                     </select>
                 </div>
                 <div>
@@ -39,6 +39,7 @@
                     <label for="toDate" class="form-label me-1">To:</label>
                     <input type="date" id="toDate" class="form-control form-control-sm d-inline w-auto">
                 </div>
+                <button id="resetZoomBtn" class="btn btn-outline-secondary btn-sm ms-2">Reset Zoom</button>
             </div>
             <div style="background-color: #fff; padding: 10px; border-radius: 8px;">
                 <canvas id="progressChart" height="400"></canvas>
@@ -200,6 +201,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function updateChart() {
+        chart.resetZoom();
         const viewMode = document.getElementById('timeFilter').value;
         const timeRange = document.getElementById('rangeFilter').value;
         const result = filterByTimeRange(timeRange);
@@ -249,6 +251,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     document.getElementById('fromDate').addEventListener('change', updateChart);
     document.getElementById('toDate').addEventListener('change', updateChart);
+    document.getElementById('resetZoomBtn').addEventListener('click', () => chart.resetZoom());
     updateChart();
 
     let sortDirections = [];
