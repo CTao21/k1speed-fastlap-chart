@@ -41,13 +41,15 @@
                 </div>
                 <button id="resetZoom" class="btn btn-outline-secondary btn-sm">Reset Zoom</button>
             </div>
-            <div class="table-container-ios" style="background-color: #fff; padding: 10px; border-radius: 8px;">
-                <canvas id="progressChart" height="400" style="touch-action: none;"></canvas>
+
+            <!-- New Chart Container -->
+            <div class="chart-container-ios mt-3">
+                <canvas id="progressChart" height="400"></canvas>
             </div>
         </div>
 
-        <!-- Session Table Section --> 
-        <div class="table-responsive mt-4">
+        <!-- Session Table Section -->
+        <div class="table-container-ios mt-4">
             <table id="lapsTable" class="table table-striped">
                 <thead>
                     <tr>
@@ -84,6 +86,23 @@
 </div>
 
 <style>
+.chart-container-ios {
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: none;
+    width: 100%;
+}
+#progressChart {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 400px;
+    touch-action: pinch-zoom;
+}
+
+/* Table styles (unchanged) */
 .table-container-ios {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -91,13 +110,19 @@
     border-radius: 8px;
     margin-bottom: 1rem;
 }
-
-.table-container-ios canvas {
+.table-container-ios table {
     min-width: 600px;
 }
-
-#progressChart {
-    touch-action: none;
+.table-container-ios tbody tr {
+    height: 50px;
+}
+.table-container-ios::-webkit-scrollbar {
+    -webkit-appearance: none;
+    height: 5px;
+}
+.table-container-ios::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: rgba(0,0,0,.2);
 }
 </style>
 
