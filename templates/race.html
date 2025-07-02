@@ -10,29 +10,33 @@
 
         <div class="row text-center mb-4">
             <div class="col">
-                <h5>Total Laps</h5>
-                <p class="fs-4">{{ race_session.total_laps }}</p>
+                <h6>Total Laps</h6>
+                <p class="fs-5">{{ race_session.total_laps }}</p>
             </div>
             <div class="col">
-                <h5>Best Lap</h5>
-                <p class="fs-4 text-success">{{ "%.3f"|format(race_session.best_lap) }}s</p>
+                <h6>Best Lap</h6>
+                <p class="fs-5 text-success">{{ "%.3f"|format(race_session.best_lap) }}s</p>
             </div>
             <div class="col">
-                <h5>Avg Lap</h5>
-                <p class="fs-4 text-primary">{{ "%.3f"|format(race_session.avg_lap) }}s</p>
+                <h6>Avg Lap</h6>
+                <p class="fs-5 text-primary">{{ "%.3f"|format(race_session.avg_lap) }}s</p>
             </div>
             <div class="col">
-                <h5>Fastest Lap #</h5>
-                <p class="fs-4">{{ race_session.fastest_lap_num }}</p>
+                <h6>Fastest Lap #</h6>
+                <p class="fs-5">{{ race_session.fastest_lap_num }}</p>
+            </div>
+            <div class="col">
+                <h6>Consistency</h6>
+                <p class="fs-5 text-warning" id="consistencyScore">–</p>
             </div>
         </div>
 
-        <h5 class="mt-4">Lap Times</h5>
-        <canvas id="lapChart" style="max-height: 300px;"></canvas>
+        <h5 class="mt-4">Lap Times (vs Best)</h5>
+        <canvas id="lapChart" style="max-height: 320px;"></canvas>
 
         <ol class="mt-4">
             {% for lap in laps %}
-            <li>{{ lap }}s</li>
+            <li>{{ "%.3f"|format(lap) }}s ({{ "%.3f"|format(lap - race_session.best_lap) }}s from best)</li>
             {% endfor %}
         </ol>
     </div>
@@ -41,33 +45,60 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const lapTimes = {{ laps | tojson }};
-    const lapLabels = lapTimes.map((_, i) => `Lap ${i + 1}`);
+    const bestLap = {{ race_session.best_lap }};
+    const gaps = lapTimes.map(v => +(v - bestLap).toFixed(3));
+    const labels = lapTimes.map((_, i) => `Lap ${i + 1}`);
+
+    // Calculate consistency score
+    const mean = lapTimes.reduce((a, b) => a + b, 0) / lapTimes.length;
+    const variance = lapTimes.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / lapTimes.length;
+    const stddev = Math.sqrt(variance);
+    const consistency = Math.max(0, Math.min(100, Math.round(100 - stddev * 5)));
+    document.getElementById('consistencyScore').textContent = consistency;
 
     new Chart(document.getElementById("lapChart"), {
         type: 'line',
         data: {
-            labels: lapLabels,
-            datasets: [{
-                label: 'Lap Time (s)',
-                data: lapTimes,
-                borderColor: 'rgba(75, 192, 192, 1)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                fill: true,
-                tension: 0.2,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-            }]
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Lap Time (s)',
+                    data: lapTimes,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                },
+                {
+                    label: 'Gap from Best (s)',
+                    data: gaps,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 3,
+                    pointStyle: 'rectRot'
+                }
+            ]
         },
         options: {
             responsive: true,
+            interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { display: false },
-                tooltip: { mode: 'index', intersect: false }
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return context.dataset.label + ": " + context.raw.toFixed(3) + "s";
+                        }
+                    }
+                }
             },
             scales: {
                 y: {
-                    title: { display: true, text: 'Seconds' },
-                    beginAtZero: false
+                    title: { display: true, text: 'Seconds' }
                 },
                 x: {
                     title: { display: true, text: 'Lap Number' }
