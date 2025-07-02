@@ -43,40 +43,6 @@
                 </div>
             </div>
 
-            <!-- Most Races Section -->
-            <div class="leaderboard-section mt-5">
-                <h4>Most Races</h4>
-                <div class="table-container-ios">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Racer</th>
-                                <th>Races</th>
-                                <th>First Race</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for racer in most_sessions %}
-                            <tr>
-                                <td>{{ loop.index }}</td>
-                                <td>{{ racer.username }}</td>
-                                <td>{{ racer.session_count }}</td>
-                                <td>{{ racer.first_date.strftime('%Y-%m-%d') }}</td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="4" class="text-center py-3">No data available</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-        </div>
-    </div>
-</div>
 
 <style>
     /* iOS-friendly scrolling tables */
