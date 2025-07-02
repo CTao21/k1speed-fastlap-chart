@@ -2,19 +2,79 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="main-card">
-        <h2 class="mb-3">{{ track_name }} - {{ race_session.date.strftime('%Y-%m-%d %I:%M %p') }}</h2>
-        <p><strong>Total Laps:</strong> {{ race_session.total_laps }}</p>
-        <p><strong>Best Lap:</strong> {{ "%.3f"|format(race_session.best_lap) }}s</p>
-        <p><strong>Avg Lap:</strong> {{ "%.3f"|format(race_session.avg_lap) }}s</p>
-        <p><strong>Fastest Lap #:</strong> {{ race_session.fastest_lap_num }}</p>
-        <hr>
-        <h5>Lap Times</h5>
-        <ol>
-        {% for lap in laps %}
-            <li>{{ lap }}</li>
-        {% endfor %}
+    <div class="main-card shadow-lg">
+        <h2 class="text-center mb-4">
+            {{ track_name }}<br>
+            <small class="text-muted">{{ race_session.date.strftime('%B %d, %Y at %I:%M %p') }}</small>
+        </h2>
+
+        <div class="row text-center mb-4">
+            <div class="col">
+                <h5>Total Laps</h5>
+                <p class="fs-4">{{ race_session.total_laps }}</p>
+            </div>
+            <div class="col">
+                <h5>Best Lap</h5>
+                <p class="fs-4 text-success">{{ "%.3f"|format(race_session.best_lap) }}s</p>
+            </div>
+            <div class="col">
+                <h5>Avg Lap</h5>
+                <p class="fs-4 text-primary">{{ "%.3f"|format(race_session.avg_lap) }}s</p>
+            </div>
+            <div class="col">
+                <h5>Fastest Lap #</h5>
+                <p class="fs-4">{{ race_session.fastest_lap_num }}</p>
+            </div>
+        </div>
+
+        <h5 class="mt-4">Lap Times</h5>
+        <canvas id="lapChart" style="max-height: 300px;"></canvas>
+
+        <ol class="mt-4">
+            {% for lap in laps %}
+            <li>{{ lap }}s</li>
+            {% endfor %}
         </ol>
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const lapTimes = {{ laps | tojson }};
+    const lapLabels = lapTimes.map((_, i) => `Lap ${i + 1}`);
+
+    new Chart(document.getElementById("lapChart"), {
+        type: 'line',
+        data: {
+            labels: lapLabels,
+            datasets: [{
+                label: 'Lap Time (s)',
+                data: lapTimes,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true,
+                tension: 0.2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                y: {
+                    title: { display: true, text: 'Seconds' },
+                    beginAtZero: false
+                },
+                x: {
+                    title: { display: true, text: 'Lap Number' }
+                }
+            }
+        }
+    });
+});
+</script>
 {% endblock %}
