@@ -1,111 +1,83 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="container mt-4">
-    <div class="main-card shadow-lg">
-        <h2 class="text-center mb-4">
-            {{ track_name }}<br>
-            <small class="text-muted">{{ race_session.date.strftime('%B %d, %Y at %I:%M %p') }}</small>
-        </h2>
+  <h2 class="text-center mb-4">{{ track_name }} - Race on {{ race_session.date.strftime('%B %d, %Y at %I:%M %p') }}</h2>
 
-        <div class="row text-center mb-4">
-            <div class="col">
-                <h6>Total Laps</h6>
-                <p class="fs-5">{{ race_session.total_laps }}</p>
-            </div>
-            <div class="col">
-                <h6>Best Lap</h6>
-                <p class="fs-5 text-success">{{ "%.3f"|format(race_session.best_lap) }}s</p>
-            </div>
-            <div class="col">
-                <h6>Avg Lap</h6>
-                <p class="fs-5 text-primary">{{ "%.3f"|format(race_session.avg_lap) }}s</p>
-            </div>
-            <div class="col">
-                <h6>Fastest Lap #</h6>
-                <p class="fs-5">{{ race_session.fastest_lap_num }}</p>
-            </div>
-            <div class="col">
-                <h6>Consistency</h6>
-                <p class="fs-5 text-warning" id="consistencyScore">–</p>
-            </div>
-        </div>
+  <div class="text-center mb-3">
+    <h5>
+      Fastest Lap: <strong>{{ '%.3f' % race_session.best_lap }}s</strong>
+      {% if race_session.best_lap == personal_best %}
+        <span class="badge bg-success ms-2">🎉 New Personal Record!</span>
+      {% else %}
+        <small class="text-muted">(+{{ '%.3f' % (race_session.best_lap - personal_best) }}s from personal best)</small>
+      {% endif %}
+    </h5>
+    <p>Average Lap: <strong>{{ '%.3f' % race_session.avg_lap }}s</strong></p>
+    <p>Total Laps: {{ race_session.total_laps }}</p>
+  </div>
 
-        <h5 class="mt-4">Lap Times (vs Best)</h5>
-        <canvas id="lapChart" style="max-height: 320px;"></canvas>
+  <canvas id="lapChart" height="120"></canvas>
 
-        <ol class="mt-4">
-            {% for lap in laps %}
-            <li>{{ "%.3f"|format(lap) }}s ({{ "%.3f"|format(lap - race_session.best_lap) }}s from best)</li>
-            {% endfor %}
-        </ol>
-    </div>
+  <table class="table table-striped table-bordered table-sm mt-4">
+    <thead class="table-dark">
+      <tr>
+        <th>Lap #</th>
+        <th>Time (s)</th>
+        <th class="text-center">Fastest</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lap in laps %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ '%.3f' % lap }}</td>
+        <td class="text-center">
+          {% if lap == race_session.best_lap %}
+            🏁
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const lapTimes = {{ laps | tojson }};
-    const bestLap = {{ race_session.best_lap }};
-    const gaps = lapTimes.map(v => +(v - bestLap).toFixed(3));
-    const labels = lapTimes.map((_, i) => `Lap ${i + 1}`);
-
-    // Calculate consistency score
-    const mean = lapTimes.reduce((a, b) => a + b, 0) / lapTimes.length;
-    const variance = lapTimes.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / lapTimes.length;
-    const stddev = Math.sqrt(variance);
-    const consistency = Math.max(0, Math.min(100, Math.round(100 - stddev * 5)));
-    document.getElementById('consistencyScore').textContent = consistency;
-
-    new Chart(document.getElementById("lapChart"), {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Lap Time (s)',
-                    data: lapTimes,
-                    borderColor: 'rgb(75, 192, 192)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    fill: true,
-                    tension: 0.2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                },
-                {
-                    label: 'Gap from Best (s)',
-                    data: gaps,
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                    fill: true,
-                    tension: 0.2,
-                    pointRadius: 3,
-                    pointStyle: 'rectRot'
-                }
-            ]
+  const ctx = document.getElementById('lapChart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [...Array({{ laps|length }}).keys()].map(i => `Lap ${i+1}`),
+      datasets: [{
+        label: 'Lap Time (s)',
+        data: {{ laps | tojson }},
+        tension: 0.3,
+        fill: false,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: false,
+          title: {
+            display: true,
+            text: 'Time (s)'
+          }
         },
-        options: {
-            responsive: true,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { position: 'top' },
-                tooltip: {
-                    callbacks: {
-                        label: function (context) {
-                            return context.dataset.label + ": " + context.raw.toFixed(3) + "s";
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    title: { display: true, text: 'Seconds' }
-                },
-                x: {
-                    title: { display: true, text: 'Lap Number' }
-                }
-            }
+        x: {
+          title: {
+            display: true,
+            text: 'Lap #'
+          }
         }
-    });
-});
+      }
+    }
+  });
 </script>
 {% endblock %}

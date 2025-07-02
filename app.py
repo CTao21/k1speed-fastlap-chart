@@ -489,7 +489,6 @@ def track_detail(track_name):
                            chart_data=chart_data,
                            username=user.username)
 
-
 @app.route('/race/<int:session_id>')
 def race_detail(session_id):
     if 'email' not in session:
@@ -500,13 +499,18 @@ def race_detail(session_id):
         return redirect(url_for('imap_login'))
 
     laps = eval(race_session.lap_data or '[]')
+    user_sessions = race_session.track.sessions
+    personal_best = min((s.best_lap for s in user_sessions), default=None)
+
     return render_template(
         'race.html',
         track_name=race_session.track.display_name,
         race_session=race_session,
         laps=laps,
+        personal_best=personal_best,
         username=race_session.track.user.username
     )
+
 
 
 @app.route('/download/<track_name>.csv')
