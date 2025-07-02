@@ -21,68 +21,54 @@
 
             <div class="mb-3">
                 <label class="form-label">Email Address</label>
-                <div class="row g-2">
-                    <div class="col">
-                        <input type="text" name="email_user" class="form-control" placeholder="username" required>
-                    </div>
-                    <div class="col-auto" style="width: 40px">
-                        <span class="mt-2">@</span>
-                    </div>
-                    <div class="col">
-                        <input type="text" name="email_domain" class="form-control" placeholder="domain.com" required>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">IMAP Server</label>
-                <input type="text" name="imap_server" class="form-control"
-                       placeholder="(find your domain’s IMAP server)" required>
+                <input type="email" name="email" class="form-control" placeholder="your@email.com" required>
                 <small class="text-muted">
-                  Common examples: imap.gmail.com, imap.mail.yahoo.com, outlook.office365.com, imap.mail.me.com (iCloud)
+                    We'll automatically detect your email provider's settings
                 </small>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">IMAP Port</label>
-                <input type="number" name="imap_port" class="form-control" value="993" required>
             </div>
 
             <div class="mb-4">
                 <label class="form-label">App-Specific Password</label>
                 <input type="password" name="password" class="form-control" required>
                 <small class="text-muted d-block mt-1">
-                    This app requires an <strong>App-Specific Password</strong> (sometimes called a “second password”) 
-                    to access your emails. You generate this in your email account’s security settings, 
-                    then revoke it at any time for safety. You’ll need a valid one each time you sign in.
+                    <strong>Important:</strong> For security, use an app-specific password:
                 </small>
                 <ul class="small text-muted ps-3 mt-1">
-                    <li>
-                        <a href="https://support.google.com/accounts/answer/185833" target="_blank">
-                            Gmail: Create an App Password
-                        </a>
-                    </li>
-                    <li>
-                        <a href="https://help.apple.com/icloud/#/dev3a99c663e" target="_blank">
-                            iCloud: Create an App-Specific Password
-                        </a>
-                    </li>
-                    <li>
-                        <a href="https://support.microsoft.com/en-us/account-billing/create-an-app-password-for-office-365-3e7c8607-db73-4003-90cb-90f9e8d3b6b4" target="_blank">
-                            Outlook: App Password Guide
-                        </a>
-                    </li>
-                    <li>
-                        <a href="https://help.yahoo.com/kb/generate-manage-third-party-passwords-sln15241.html" target="_blank">
-                            Yahoo: Third-Party App Passwords
-                        </a>
-                    </li>
+                    <li><a href="https://support.google.com/accounts/answer/185833" target="_blank">Gmail Instructions</a></li>
+                    <li><a href="https://help.apple.com/icloud/#/dev3a99c663e" target="_blank">iCloud Instructions</a></li>
+                    <li><a href="https://support.microsoft.com/en-us/account-billing/create-an-app-password-for-office-365-3e7c8607-db73-4003-90cb-90f9e8d3b6b4" target="_blank">Outlook Instructions</a></li>
+                    <li><a href="https://help.yahoo.com/kb/generate-manage-third-party-passwords-sln15241.html" target="_blank">Yahoo Instructions</a></li>
                 </ul>
             </div>
 
             <button type="submit" class="btn btn-primary w-100">Connect</button>
+            
+            <div class="text-center mt-3">
+                <a href="#" id="show-advanced" class="text-muted small">Need custom IMAP settings?</a>
+            </div>
+            
+            <div id="advanced-settings" class="mt-3" style="display: none;">
+                <div class="mb-3">
+                    <label class="form-label">Custom IMAP Server</label>
+                    <input type="text" name="imap_server" class="form-control" placeholder="imap.yourprovider.com">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Custom IMAP Port</label>
+                    <input type="number" name="imap_port" class="form-control" value="993">
+                </div>
+            </div>
         </form>
     </div>
 </div>
-{% endblock %}
 
+<script>
+document.getElementById('show-advanced').addEventListener('click', function(e) {
+    e.preventDefault();
+    const advanced = document.getElementById('advanced-settings');
+    advanced.style.display = advanced.style.display === 'none' ? 'block' : 'none';
+    this.textContent = advanced.style.display === 'none' 
+        ? 'Need custom IMAP settings?' 
+        : 'Hide Advanced Settings';
+});
+</script>
+{% endblock %}

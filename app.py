@@ -25,6 +25,37 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+# --- Email Provider Configuration ---
+EMAIL_PROVIDER_IMAP = {
+    # Google
+    'gmail.com': {'server': 'imap.gmail.com', 'port': 993},
+    'googlemail.com': {'server': 'imap.gmail.com', 'port': 993},
+    
+    # Microsoft
+    'outlook.com': {'server': 'outlook.office365.com', 'port': 993},
+    'hotmail.com': {'server': 'outlook.office365.com', 'port': 993},
+    'live.com': {'server': 'outlook.office365.com', 'port': 993},
+    'msn.com': {'server': 'outlook.office365.com', 'port': 993},
+    
+    # Yahoo
+    'yahoo.com': {'server': 'imap.mail.yahoo.com', 'port': 993},
+    'ymail.com': {'server': 'imap.mail.yahoo.com', 'port': 993},
+    
+    # Apple
+    'icloud.com': {'server': 'imap.mail.me.com', 'port': 993},
+    'me.com': {'server': 'imap.mail.me.com', 'port': 993},
+    'mac.com': {'server': 'imap.mail.me.com', 'port': 993},
+    
+    # AOL
+    'aol.com': {'server': 'imap.aol.com', 'port': 993},
+    
+    # ProtonMail (requires bridge)
+    'protonmail.com': {'server': '127.0.0.1', 'port': 1143},
+    'proton.me': {'server': '127.0.0.1', 'port': 1143},
+    
+    # Default fallback (for custom domains)
+    'default': {'server': 'imap.{domain}', 'port': 993}
+}
 
 # --- Track-specific lap time cutoffs ---
 LAP_TIME_CUTOFFS = {
@@ -152,27 +183,62 @@ def imap_login():
     if request.method == 'POST':
         try:
             session.clear()
-            session['k1_name']     = request.form['k1_name']
-            usern = request.form['email_user']
-            dom   = request.form['email_domain']
-            session['email']       = f"{usern}@{dom}"
-            session['imap_server'] = request.form['imap_server']
-            session['imap_port']   = int(request.form['imap_port'])
-            session['password']    = request.form['password']
-
-            # validate IMAP creds
-            with imaplib.IMAP4_SSL(session['imap_server'], session['imap_port']) as M:
-                M.login(session['email'], session['password'])
-                M.select('INBOX')
-
-            # route based on existing user
-            if User.query.filter_by(email=session['email']).first():
-                return redirect(url_for('profile_found'))
+            session['k1_name'] = request.form['k1_name']
+            email = request.form['email'].strip()
+            
+            # Validate email format
+            if '@' not in email:
+                flash("Please enter a valid email address", 'error')
+                return redirect(url_for('imap_login'))
+            
+            session['email'] = email
+            domain = email.split('@')[-1].lower()
+            
+            # Handle custom IMAP settings if provided
+            if request.form.get('imap_server'):
+                session['imap_server'] = request.form['imap_server'].strip()
+                try:
+                    session['imap_port'] = int(request.form.get('imap_port', 993))
+                except ValueError:
+                    flash("IMAP port must be a number", 'error')
+                    return redirect(url_for('imap_login'))
             else:
-                return redirect(url_for('profile_setup'))
+                # Auto-detect configuration
+                provider_config = EMAIL_PROVIDER_IMAP.get(domain, EMAIL_PROVIDER_IMAP['default'])
+                session['imap_server'] = provider_config['server'].format(domain=domain)
+                session['imap_port'] = provider_config['port']
+            
+            if not request.form['password']:
+                flash("Password cannot be empty", 'error')
+                return redirect(url_for('imap_login'))
+                
+            session['password'] = request.form['password']
+
+            # Test IMAP connection
+            try:
+                with imaplib.IMAP4_SSL(session['imap_server'], session['imap_port']) as M:
+                    M.login(session['email'], session['password'])
+                    M.select('INBOX')
+            except imaplib.IMAP4.error as e:
+                error_msg = str(e)
+                if "Invalid credentials" in error_msg:
+                    flash("Login failed: Wrong email or password", 'error')
+                elif "connection refused" in error_msg.lower():
+                    flash(f"Couldn't connect to {session['imap_server']}. Try manual IMAP settings.", 'error')
+                else:
+                    flash(f"Email error: {error_msg}", 'error')
+                return redirect(url_for('imap_login'))
+
+            # Check if user exists
+            user = User.query.filter_by(email=session['email']).first()
+            if user:
+                return redirect(url_for('profile_found'))
+            return redirect(url_for('profile_setup'))
 
         except Exception as e:
-            flash(f"Login failed: {e}", 'error')
+            flash(f"Error: {str(e)}", 'error')
+            app.logger.error(f"Login error: {str(e)}")
+            return redirect(url_for('imap_login'))
 
     return render_template('imap_login.html')
 
