@@ -3,6 +3,7 @@ import re
 import imaplib
 import csv
 from datetime import datetime
+import statistics
 from io import StringIO
 
 from flask import (
@@ -450,9 +451,10 @@ def track_detail(track_name):
     t    = Track.query.filter_by(raw_name=track_name, user_id=user.id).first()
 
     sessions, dates, bests = [], [], []
-    for s in t.sessions:
+    for s in sorted(t.sessions, key=lambda x: x.date, reverse=True):
         lap_list = eval(s.lap_data or '[]')
         sessions.append({
+            'id': s.id,
             'date': s.date.strftime('%Y-%m-%d %H:%M'),
             'total_laps': s.total_laps,
             'best_lap': f"{s.best_lap:.3f}",
@@ -462,6 +464,10 @@ def track_detail(track_name):
         })
         dates.append(s.date.strftime('%Y-%m-%d'))
         bests.append(s.best_lap)
+
+    drift_cutoff = 0
+    if bests:
+        drift_cutoff = statistics.median(bests) + 7
 
     improvement_dates, improvement_laps = [], []
     best_so_far = float('inf')
@@ -475,7 +481,8 @@ def track_detail(track_name):
         'dates': dates,
         'best_laps': bests,
         'improvement_dates': improvement_dates,
-        'improvement_laps': improvement_laps
+        'improvement_laps': improvement_laps,
+        'drift_cutoff': drift_cutoff
     }
 
     return render_template('track.html',
@@ -483,6 +490,25 @@ def track_detail(track_name):
                            sessions=sessions,
                            chart_data=chart_data,
                            username=user.username)
+
+
+@app.route('/race/<int:session_id>')
+def race_detail(session_id):
+    if 'email' not in session:
+        return redirect(url_for('imap_login'))
+
+    s = Session.query.get_or_404(session_id)
+    if s.track.user.email != session['email']:
+        return redirect(url_for('imap_login'))
+
+    laps = eval(s.lap_data or '[]')
+    return render_template(
+        'race.html',
+        track_name=s.track.display_name,
+        session=s,
+        laps=laps,
+        username=s.track.user.username
+    )
 
 
 @app.route('/download/<track_name>.csv')

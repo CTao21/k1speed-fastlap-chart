@@ -40,15 +40,20 @@
                     <input type="date" id="toDate" class="form-control form-control-sm d-inline w-auto" placeholder="mm/dd/yyyy">
                 </div>
                 <button id="resetZoom" class="btn btn-outline-secondary btn-sm">Reset Zoom</button>
+                <div class="form-check ms-2">
+                    <input class="form-check-input" type="checkbox" id="driftToggle">
+                    <label class="form-check-label" for="driftToggle">Hide Likely Drift Nights</label>
+                </div>
             </div>
 
             <!-- Updated Chart Container -->
-            <div class="chart-container-ios mt-3" ontouchstart="event.preventDefault();">
+            <div class="chart-container-ios mt-3">
                 <div style="position: relative; width: 100%;">
                     <canvas id="progressChart" style="touch-action: none; width: 100%; height: 400px;"></canvas>
                 </div>
             </div>
             <small class="text-muted d-block mt-1"><em>Pinch to zoom may not work on all mobile browsers. Try zooming on desktop for best experience.</em></small>
+            <div id="driftInfo" class="text-muted small"></div>
         </div>
 
         <!-- Session Table Section (unchanged) -->
@@ -69,7 +74,7 @@
                 <tbody>
                     {% for s in sessions %}
                     <tr>
-                        <td data-sort="{{ s.date }}">{{ s.date }}</td>
+                        <td data-sort="{{ s.date }}"><a href="{{ url_for('race_detail', session_id=s.id) }}">{{ s.date }}</a></td>
                         <td>{{ s.total_laps }}</td>
                         <td>{{ "%.3f"|format(s.best_lap|float) }}</td>
                         <td>{{ "%.3f"|format(s.avg_lap|float) }}</td>
@@ -84,6 +89,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <button id="toggleRows" class="btn btn-outline-secondary btn-sm mt-2">Show All</button>
         </div>
     </div>
 </div>
@@ -137,6 +143,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const labels = {{ chart_data.dates | tojson }};
     const data = {{ chart_data.best_laps | tojson }};
+    const driftCutoff = {{ chart_data.drift_cutoff | tojson }};
+    const driftFlags = data.map(v => v >= driftCutoff);
     let filteredLabels = labels.slice();
     let filteredData = data.slice();
 
@@ -229,11 +237,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (d >= fromDate && d <= toDate) {
                         acc.labels.push(dateStr);
                         acc.data.push(data[i]);
+                        acc.indices.push(i);
                     }
                     return acc;
-                }, { labels: [], data: [] });
+                }, { labels: [], data: [], indices: [] });
             } else {
-                return { labels: [], data: [] };
+                return { labels: [], data: [], indices: [] };
             }
         }
 
@@ -242,9 +251,10 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!fromDate || d >= fromDate) {
                 acc.labels.push(dateStr);
                 acc.data.push(data[i]);
+                acc.indices.push(i);
             }
             return acc;
-        }, { labels: [], data: [] });
+        }, { labels: [], data: [], indices: [] });
     }
 
     function updateChart() {
@@ -255,6 +265,31 @@ document.addEventListener("DOMContentLoaded", function () {
 
         filteredLabels = result.labels;
         filteredData = result.data;
+        let indices = result.indices;
+
+        if (document.getElementById('driftToggle').checked) {
+            let removed = 0;
+            let removedDates = [];
+            let tmpLabels = [], tmpData = [], tmpIndices = [];
+            for (let i = 0; i < filteredLabels.length; i++) {
+                if (driftFlags[indices[i]]) {
+                    removed++;
+                    removedDates.push(filteredLabels[i]);
+                } else {
+                    tmpLabels.push(filteredLabels[i]);
+                    tmpData.push(filteredData[i]);
+                    tmpIndices.push(indices[i]);
+                }
+            }
+            filteredLabels = tmpLabels;
+            filteredData = tmpData;
+            indices = tmpIndices;
+            const uniqueDates = [...new Set(removedDates.map(d => d.split(' ')[0]))];
+            document.getElementById('driftInfo').textContent =
+                `Filtered ${removed} sessions on ${uniqueDates.length} drift nights. ` + uniqueDates.join(', ');
+        } else {
+            document.getElementById('driftInfo').textContent = '';
+        }
 
         if (viewMode === 'improvement') {
             let impLabels = [];
@@ -300,6 +335,27 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById('resetZoom').addEventListener('click', () => {
         chart.resetZoom();
     });
+    document.getElementById('driftToggle').addEventListener('change', updateChart);
+
+    const MAX_ROWS = 20;
+    const table = document.getElementById('lapsTable');
+    const btnToggle = document.getElementById('toggleRows');
+    const rows = Array.from(table.tBodies[0].rows);
+    if (rows.length > MAX_ROWS) {
+        rows.slice(MAX_ROWS).forEach(r => r.classList.add('d-none'));
+        btnToggle.addEventListener('click', () => {
+            const hidden = table.querySelectorAll('tbody tr.d-none');
+            if (hidden.length) {
+                hidden.forEach(r => r.classList.remove('d-none'));
+                btnToggle.textContent = 'Show Less';
+            } else {
+                rows.slice(MAX_ROWS).forEach(r => r.classList.add('d-none'));
+                btnToggle.textContent = 'Show All';
+            }
+        });
+    } else {
+        btnToggle.style.display = 'none';
+    }
     updateChart();
 
     let sortDirections = [];
