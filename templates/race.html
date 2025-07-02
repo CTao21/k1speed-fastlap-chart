@@ -1,74 +1,64 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container mt-4">
-  <h2 class="text-center mb-4">{{ track_name }} - Race on {{ race_session.date.strftime('%B %d, %Y at %I:%M %p') }}</h2>
+  <div class="card shadow rounded-4 p-4">
+    <h2 class="text-center mb-4">{{ track_name }} - Race on {{ race_session.date.strftime('%B %d, %Y at %I:%M %p') }}</h2>
 
-  <div class="text-center mb-3">
-    <h5>
-      Fastest Lap: <strong>{{ '%.3f' % race_session.best_lap }}s</strong>
+    <div class="text-center mb-4">
       {% if race_session.best_lap == personal_best %}
-        <span class="badge bg-success ms-2">🎉 New Personal Record!</span>
+        <h5>Fastest Lap: <strong>{{ '%.3f' % race_session.best_lap }}s</strong>
+          <span class="badge bg-success ms-2">🎉 New Personal Record!</span>
+        </h5>
       {% else %}
-        <small class="text-muted">(+{{ '%.3f' % (race_session.best_lap - personal_best) }}s from personal best)</small>
+        <h5>Fastest Lap: <strong>{{ '%.3f' % race_session.best_lap }}s</strong>
+          <small class="text-muted">
+            (+{{ '%.3f' % (race_session.best_lap - personal_best) }}s from best lap: {{ '%.3f' % personal_best }}s)
+          </small>
+        </h5>
       {% endif %}
-    </h5>
-    <p>Average Lap: <strong>{{ '%.3f' % race_session.avg_lap }}s</strong></p>
-    <p>Total Laps: {{ race_session.total_laps }}</p>
+      <p>Average Lap: <strong>{{ '%.3f' % race_session.avg_lap }}s</strong></p>
+      <p>Total Laps: {{ race_session.total_laps }}</p>
+    </div>
+
+    <canvas id="lapChart" height="120"></canvas>
   </div>
-
-  <canvas id="lapChart" height="120"></canvas>
-
-  <table class="table table-striped table-bordered table-sm mt-4">
-    <thead class="table-dark">
-      <tr>
-        <th>Lap #</th>
-        <th>Time (s)</th>
-        <th class="text-center">Fastest</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for lap in laps %}
-      <tr>
-        <td>{{ loop.index }}</td>
-        <td>{{ '%.3f' % lap }}</td>
-        <td class="text-center">
-          {% if lap == race_session.best_lap %}
-            🏁
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   const ctx = document.getElementById('lapChart').getContext('2d');
-  const chart = new Chart(ctx, {
+  new Chart(ctx, {
     type: 'line',
     data: {
       labels: [...Array({{ laps|length }}).keys()].map(i => `Lap ${i+1}`),
       datasets: [{
-        label: 'Lap Time (s)',
+        label: 'Lap Time',
         data: {{ laps | tojson }},
         tension: 0.3,
-        fill: false,
-        borderWidth: 2
+        borderWidth: 3,
+        pointRadius: 4,
+        pointHoverRadius: 6
       }]
     },
     options: {
       responsive: true,
       plugins: {
-        legend: { display: false }
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `${context.label}: ${context.formattedValue}s`;
+            }
+          }
+        }
       },
       scales: {
         y: {
-          beginAtZero: false,
           title: {
             display: true,
-            text: 'Time (s)'
-          }
+            text: 'Lap Time (s)'
+          },
+          beginAtZero: false
         },
         x: {
           title: {
