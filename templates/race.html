@@ -3,11 +3,11 @@
 {% block content %}
 <div class="container mt-4">
     <div class="main-card">
-        <h2 class="mb-3">{{ track_name }} - {{ session.date.strftime('%Y-%m-%d %I:%M %p') }}</h2>
-        <p><strong>Total Laps:</strong> {{ session.total_laps }}</p>
-        <p><strong>Best Lap:</strong> {{ "%.3f"|format(session.best_lap) }}s</p>
-        <p><strong>Avg Lap:</strong> {{ "%.3f"|format(session.avg_lap) }}s</p>
-        <p><strong>Fastest Lap #:</strong> {{ session.fastest_lap_num }}</p>
+        <h2 class="mb-3">{{ track_name }} - {{ race_session.date.strftime('%Y-%m-%d %I:%M %p') }}</h2>
+        <p><strong>Total Laps:</strong> {{ race_session.total_laps }}</p>
+        <p><strong>Best Lap:</strong> {{ "%.3f"|format(race_session.best_lap) }}s</p>
+        <p><strong>Avg Lap:</strong> {{ "%.3f"|format(race_session.avg_lap) }}s</p>
+        <p><strong>Fastest Lap #:</strong> {{ race_session.fastest_lap_num }}</p>
         <hr>
         <h5>Lap Times</h5>
         <ol>

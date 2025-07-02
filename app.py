@@ -5,7 +5,6 @@ import csv
 from datetime import datetime
 import statistics
 from io import StringIO
-
 from flask import (
     Flask, render_template, request,
     redirect, url_for, session, flash,
@@ -17,7 +16,6 @@ from werkzeug.utils import secure_filename
 # for parsing raw email bytes
 from email.parser import BytesParser
 from email.policy import default
-
 # --- Flask + DB setup ---
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -497,17 +495,17 @@ def race_detail(session_id):
     if 'email' not in session:
         return redirect(url_for('imap_login'))
 
-    s = Session.query.get_or_404(session_id)
-    if s.track.user.email != session['email']:
+    race_session = Session.query.get_or_404(session_id)
+    if race_session.track.user.email != session['email']:
         return redirect(url_for('imap_login'))
 
-    laps = eval(s.lap_data or '[]')
+    laps = eval(race_session.lap_data or '[]')
     return render_template(
         'race.html',
-        track_name=s.track.display_name,
-        session=s,
+        track_name=race_session.track.display_name,
+        race_session=race_session,
         laps=laps,
-        username=s.track.user.username
+        username=race_session.track.user.username
     )
 
 

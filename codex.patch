@@ -1,91 +1,8 @@
 diff --git a/app.py b/app.py
-index 3dbd4172eb45802bcdc25880fa57202d4379859c..29b9dfd83d61121f808a9e6cfc12dd3380d34cdd 100644
+index 29b9dfd83d61121f808a9e6cfc12dd3380d34cdd..4988575205f0de28d2b5744780eb5695e738c947 100644
 --- a/app.py
 +++ b/app.py
-@@ -1,30 +1,31 @@
- import os
- import re
- import imaplib
- import csv
- from datetime import datetime
-+import statistics
- from io import StringIO
- 
- from flask import (
-     Flask, render_template, request,
-     redirect, url_for, session, flash,
-     jsonify, Response
- )
- from flask_sqlalchemy import SQLAlchemy
- from werkzeug.utils import secure_filename
- 
- # for parsing raw email bytes
- from email.parser import BytesParser
- from email.policy import default
- 
- # --- Flask + DB setup ---
- app = Flask(__name__)
- app.secret_key = os.urandom(24)
- app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////data/data.db'
- app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
- 
- db = SQLAlchemy(app)
- 
- # --- Email Provider Configuration ---
- EMAIL_PROVIDER_IMAP = {
-     # Google
-diff --git a/app.py b/app.py
-index 3dbd4172eb45802bcdc25880fa57202d4379859c..29b9dfd83d61121f808a9e6cfc12dd3380d34cdd 100644
---- a/app.py
-+++ b/app.py
-@@ -428,85 +429,110 @@ def results():
-             continue
-         best    = min(t.sessions, key=lambda s: s.best_lap)
-         first   = min(t.sessions, key=lambda s: s.date)
-         tracks_data[t.display_name] = {
-             'raw_name'  : t.raw_name,
-             'sessions'  : len(t.sessions),
-             'first_date': first.date.strftime('%Y-%m-%d'),
-             'best_lap'  : f"{best.best_lap:.3f}",
-             'best_date' : best.date.strftime('%Y-%m-%d')
-         }
- 
-     return render_template('results.html',
-                            username=user.username,
-                            tracks=tracks_data)
- 
- 
- @app.route('/track/<track_name>')
- def track_detail(track_name):
-     if 'email' not in session:
-         return redirect(url_for('imap_login'))
- 
-     user = User.query.filter_by(email=session['email']).first()
-     t    = Track.query.filter_by(raw_name=track_name, user_id=user.id).first()
- 
-     sessions, dates, bests = [], [], []
--    for s in t.sessions:
-+    for s in sorted(t.sessions, key=lambda x: x.date, reverse=True):
-         lap_list = eval(s.lap_data or '[]')
-         sessions.append({
-+            'id': s.id,
-             'date': s.date.strftime('%Y-%m-%d %H:%M'),
-             'total_laps': s.total_laps,
-             'best_lap': f"{s.best_lap:.3f}",
-             'avg_lap': f"{s.avg_lap:.3f}",
-             'fastest_lap_num': s.fastest_lap_num,
-             'laps': lap_list
-         })
-         dates.append(s.date.strftime('%Y-%m-%d'))
-         bests.append(s.best_lap)
- 
-+    drift_cutoff = 0
-+    if bests:
-+        drift_cutoff = statistics.median(bests) + 7
-+
-     improvement_dates, improvement_laps = [], []
-     best_so_far = float('inf')
-     for s in sorted(t.sessions, key=lambda x: x.date):
+@@ -475,61 +475,61 @@ def track_detail(track_name):
          if s.best_lap < best_so_far:
              best_so_far = s.best_lap
              improvement_dates.append(s.date.strftime('%Y-%m-%d %H:%M'))
@@ -95,9 +12,8 @@ index 3dbd4172eb45802bcdc25880fa57202d4379859c..29b9dfd83d61121f808a9e6cfc12dd33
          'dates': dates,
          'best_laps': bests,
          'improvement_dates': improvement_dates,
--        'improvement_laps': improvement_laps
-+        'improvement_laps': improvement_laps,
-+        'drift_cutoff': drift_cutoff
+         'improvement_laps': improvement_laps,
+         'drift_cutoff': drift_cutoff
      }
  
      return render_template('track.html',
@@ -107,25 +23,31 @@ index 3dbd4172eb45802bcdc25880fa57202d4379859c..29b9dfd83d61121f808a9e6cfc12dd33
                             username=user.username)
  
  
-+@app.route('/race/<int:session_id>')
-+def race_detail(session_id):
-+    if 'email' not in session:
-+        return redirect(url_for('imap_login'))
-+
-+    s = Session.query.get_or_404(session_id)
-+    if s.track.user.email != session['email']:
-+        return redirect(url_for('imap_login'))
-+
-+    laps = eval(s.lap_data or '[]')
-+    return render_template(
-+        'race.html',
-+        track_name=s.track.display_name,
-+        session=s,
-+        laps=laps,
-+        username=s.track.user.username
-+    )
-+
-+
+ @app.route('/race/<int:session_id>')
+ def race_detail(session_id):
+     if 'email' not in session:
+         return redirect(url_for('imap_login'))
+ 
+-    s = Session.query.get_or_404(session_id)
+-    if s.track.user.email != session['email']:
++    race_session = Session.query.get_or_404(session_id)
++    if race_session.track.user.email != session['email']:
+         return redirect(url_for('imap_login'))
+ 
+-    laps = eval(s.lap_data or '[]')
++    laps = eval(race_session.lap_data or '[]')
+     return render_template(
+         'race.html',
+-        track_name=s.track.display_name,
+-        session=s,
++        track_name=race_session.track.display_name,
++        race_session=race_session,
+         laps=laps,
+-        username=s.track.user.username
++        username=race_session.track.user.username
+     )
+ 
+ 
  @app.route('/download/<track_name>.csv')
  def download(track_name):
      if 'email' not in session:
@@ -148,449 +70,35 @@ index 3dbd4172eb45802bcdc25880fa57202d4379859c..29b9dfd83d61121f808a9e6cfc12dd33
          w.writerow(row)
  
      return Response(
-         out.getvalue(),
-         mimetype='text/csv',
-         headers={'Content-Disposition': f'attachment; filename="{t.display_name}.csv"'}
-
-diff --git a/static/styles.css b/static/styles.css
-index cb19477b03c54215c85fc1928c7fbdcbc22aa5fd..1f83fac7775597e257d4dc6b2510650085a4e2cf 100644
---- a/static/styles.css
-+++ b/static/styles.css
-@@ -1,28 +1,28 @@
- /* Base Styles */
- body {
--    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-+    font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-     min-height: 100vh;
-     background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)),
-                 url('https://images.unsplash.com/photo-1555349223-c4751cc3c212') center/cover fixed;
- }
- 
- /* Card Containers */
- .auth-card,
- .main-card {
-     position: relative;
-     background: none; /* we move background to pseudo-element */
-     border-radius: 12px;
-     box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-     padding: 2rem;
-     margin: 1rem auto;
-     max-width: 800px;
-     border: 1px solid rgba(255,255,255,0.3);
-     overflow: hidden; /* clip background inside rounded corners */
- }
- 
- /* This creates the blended background */
- .auth-card::before,
- .main-card::before {
-     content: '';
-     position: absolute;
-     inset: 0;
-
-diff --git a/templates/base.html b/templates/base.html
-index 5a381a4bd7e95905060ab08cb06a5ba04898a9fc..54382056b4c598387fd190a112e9b1019a66b374 100644
---- a/templates/base.html
-+++ b/templates/base.html
-@@ -1,32 +1,33 @@
- <!DOCTYPE html>
- <html lang="en">
- <head>
-     <meta charset="UTF-8">
-     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-     <title>K1 Speed Tracker</title>
-     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
-     <link rel="stylesheet" href="/static/styles.css">
- </head>
- <body>
-     <nav class="navbar navbar-dark bg-dark">
-         <div class="container">
-             <a class="navbar-brand" href="/">K1 Speed Tracker</a>
-             {% if 'email' in session %}
-             <div class="d-flex">
-                 <a href="{{ url_for('results') }}" class="btn btn-sm btn-outline-light me-2">My Results</a>
-                 <a href="{{ url_for('leaderboard') }}" class="btn btn-sm btn-outline-light">Leaderboards</a>
-             </div>
-             {% endif %}
-         </div>
-     </nav>
-     
-     <div class="main-background">
-         {% block content %}{% endblock %}
-     </div>
- 
-     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
-     <footer class="text-center mt-4 mb-2 text-muted small">
-         This is an unofficial app. Not affiliated with or endorsed by K1 Speed.
-     </footer>
 
 diff --git a/templates/race.html b/templates/race.html
-new file mode 100644
-index 0000000..8c27fff
---- /dev/null
+index 8c27fff5dbfdf374279eb38a096b0c2b1efcbc9b..dc98094cc5282dbedb8592678d3824addc0d6891 100644
+--- a/templates/race.html
 +++ b/templates/race.html
-@@ -0,0 +1,20 @@
-+{% extends "base.html" %}
-+
-+{% block content %}
-+<div class="container mt-4">
-+    <div class="main-card">
-+        <h2 class="mb-3">{{ track_name }} - {{ session.date.strftime('%Y-%m-%d %I:%M %p') }}</h2>
-+        <p><strong>Total Laps:</strong> {{ session.total_laps }}</p>
-+        <p><strong>Best Lap:</strong> {{ "%.3f"|format(session.best_lap) }}s</p>
-+        <p><strong>Avg Lap:</strong> {{ "%.3f"|format(session.avg_lap) }}s</p>
-+        <p><strong>Fastest Lap #:</strong> {{ session.fastest_lap_num }}</p>
-+        <hr>
-+        <h5>Lap Times</h5>
-+        <ol>
-+        {% for lap in laps %}
-+            <li>{{ lap }}</li>
-+        {% endfor %}
-+        </ol>
-+    </div>
-+</div>
-+{% endblock %}
-
-diff --git a/templates/track.html b/templates/track.html
-index f019b084ce5dc03e6af5dbd6c1c71d08fde03ddd..ba0bbdf21c68ed96156f73deb9f3854b939c13b5 100644
---- a/templates/track.html
-+++ b/templates/track.html
-@@ -18,94 +18,100 @@
-                     <select id="timeFilter" class="form-select form-select-sm d-inline w-auto">
-                         <option value="improvement">Personal Bests Only</option>
-                         <option value="all" selected>Every Race</option>
-                         <option value="monthly">Fastest Race Each Month</option>
-                         <option value="weekly">Fastest Race Each Week</option>
-                         <option value="daily">Fastest Race Each Day</option>
-                     </select>
-                 </div>
-                 <div>
-                     <label for="rangeFilter" class="form-label me-2">Time Range:</label>
-                     <select id="rangeFilter" class="form-select form-select-sm d-inline w-auto">
-                         <option value="all" selected>All Time</option>
-                         <option value="this_week">This Week</option>
-                         <option value="this_month">This Month</option>
-                         <option value="this_year">This Year</option>
-                         <option value="custom">Custom Range</option>
-                     </select>
-                 </div>
-                 <div id="customRangeInputs" style="display:none;">
-                     <label for="fromDate" class="form-label me-1">From:</label>
-                     <input type="date" id="fromDate" class="form-control form-control-sm d-inline w-auto me-2" placeholder="mm/dd/yyyy">
-                     <label for="toDate" class="form-label me-1">To:</label>
-                     <input type="date" id="toDate" class="form-control form-control-sm d-inline w-auto" placeholder="mm/dd/yyyy">
-                 </div>
-                 <button id="resetZoom" class="btn btn-outline-secondary btn-sm">Reset Zoom</button>
-+                <div class="form-check ms-2">
-+                    <input class="form-check-input" type="checkbox" id="driftToggle">
-+                    <label class="form-check-label" for="driftToggle">Hide Likely Drift Nights</label>
-+                </div>
-             </div>
+@@ -1,20 +1,20 @@
+ {% extends "base.html" %}
  
-             <!-- Updated Chart Container -->
--            <div class="chart-container-ios mt-3" ontouchstart="event.preventDefault();">
-+            <div class="chart-container-ios mt-3">
-                 <div style="position: relative; width: 100%;">
-                     <canvas id="progressChart" style="touch-action: none; width: 100%; height: 400px;"></canvas>
-                 </div>
-             </div>
-             <small class="text-muted d-block mt-1"><em>Pinch to zoom may not work on all mobile browsers. Try zooming on desktop for best experience.</em></small>
-+            <div id="driftInfo" class="text-muted small"></div>
-         </div>
- 
-         <!-- Session Table Section (unchanged) -->
-         <div class="table-container-ios mt-4">
-             <table id="lapsTable" class="table table-striped">
-                 <thead>
-                     <tr>
-                         <th onclick="sortTable(0)"><u>Date</u> <span class="sort-icons">⇅</span></th>
-                         <th onclick="sortTable(1)"><u>Total Laps</u> <span class="sort-icons">⇅</span></th>
-                         <th onclick="sortTable(2)"><u>Best Lap</u> <span class="sort-icons">⇅</span></th>
-                         <th onclick="sortTable(3)"><u>Avg Lap</u> <span class="sort-icons">⇅</span></th>
-                         <th onclick="sortTable(4)"><u>Fastest Lap #</u> <span class="sort-icons">⇅</span></th>
-                         {% for i in range(1, 17) %}
-                         <th onclick="sortTable({{ i + 4 }})"><u>Lap {{ i }}</u> <span class="sort-icons">⇅</span></th>
-                         {% endfor %}
-                     </tr>
-                 </thead>
-                 <tbody>
-                     {% for s in sessions %}
-                     <tr>
--                        <td data-sort="{{ s.date }}">{{ s.date }}</td>
-+                        <td data-sort="{{ s.date }}"><a href="{{ url_for('race_detail', session_id=s.id) }}">{{ s.date }}</a></td>
-                         <td>{{ s.total_laps }}</td>
-                         <td>{{ "%.3f"|format(s.best_lap|float) }}</td>
-                         <td>{{ "%.3f"|format(s.avg_lap|float) }}</td>
-                         <td>{{ s.fastest_lap_num }}</td>
-                         {% for lap in s.laps %}
-                         <td>{{ lap }}</td>
-                         {% endfor %}
-                         {% for i in range(16 - s.laps|length) %}
-                         <td></td>
-                         {% endfor %}
-                     </tr>
-                     {% endfor %}
-                 </tbody>
-             </table>
-+            <button id="toggleRows" class="btn btn-outline-secondary btn-sm mt-2">Show All</button>
-         </div>
+ {% block content %}
+ <div class="container mt-4">
+     <div class="main-card">
+-        <h2 class="mb-3">{{ track_name }} - {{ session.date.strftime('%Y-%m-%d %I:%M %p') }}</h2>
+-        <p><strong>Total Laps:</strong> {{ session.total_laps }}</p>
+-        <p><strong>Best Lap:</strong> {{ "%.3f"|format(session.best_lap) }}s</p>
+-        <p><strong>Avg Lap:</strong> {{ "%.3f"|format(session.avg_lap) }}s</p>
+-        <p><strong>Fastest Lap #:</strong> {{ session.fastest_lap_num }}</p>
++        <h2 class="mb-3">{{ track_name }} - {{ race_session.date.strftime('%Y-%m-%d %I:%M %p') }}</h2>
++        <p><strong>Total Laps:</strong> {{ race_session.total_laps }}</p>
++        <p><strong>Best Lap:</strong> {{ "%.3f"|format(race_session.best_lap) }}s</p>
++        <p><strong>Avg Lap:</strong> {{ "%.3f"|format(race_session.avg_lap) }}s</p>
++        <p><strong>Fastest Lap #:</strong> {{ race_session.fastest_lap_num }}</p>
+         <hr>
+         <h5>Lap Times</h5>
+         <ol>
+         {% for lap in laps %}
+             <li>{{ lap }}</li>
+         {% endfor %}
+         </ol>
      </div>
  </div>
- 
- <style>
- .chart-container-ios {
-     background-color: #fff;
-     padding: 10px;
-     border-radius: 8px;
-     overflow: hidden;
-     -webkit-overflow-scrolling: touch;
-     width: 100%;
-     touch-action: none;
- }
- 
- #progressChart {
-     max-width: 100%;
-     height: auto;
-     max-height: 400px;
-     touch-action: none;
- }
- 
- /* Table styles (unchanged) */
- .table-container-ios {
-     overflow-x: auto;
-diff --git a/templates/track.html b/templates/track.html
-index f019b084ce5dc03e6af5dbd6c1c71d08fde03ddd..ba0bbdf21c68ed96156f73deb9f3854b939c13b5 100644
---- a/templates/track.html
-+++ b/templates/track.html
-@@ -115,50 +121,52 @@
-     margin-bottom: 1rem;
- }
- .table-container-ios table {
-     min-width: 600px;
- }
- .table-container-ios tbody tr {
-     height: 50px;
- }
- .table-container-ios::-webkit-scrollbar {
-     -webkit-appearance: none;
-     height: 5px;
- }
- .table-container-ios::-webkit-scrollbar-thumb {
-     border-radius: 4px;
-     background-color: rgba(0,0,0,.2);
- }
- </style>
- 
- <script>
- document.addEventListener("DOMContentLoaded", function () {
-     const ctx = document.getElementById('progressChart');
-     if (!ctx) return;
- 
-     const labels = {{ chart_data.dates | tojson }};
-     const data = {{ chart_data.best_laps | tojson }};
-+    const driftCutoff = {{ chart_data.drift_cutoff | tojson }};
-+    const driftFlags = data.map(v => v >= driftCutoff);
-     let filteredLabels = labels.slice();
-     let filteredData = data.slice();
- 
-     const improvementLabels = [];
-     const improvementData = [];
-     let bestSoFar = Infinity;
-     for (let i = 0; i < labels.length; i++) {
-         const lap = data[i];
-         if (lap < bestSoFar) {
-             bestSoFar = lap;
-             improvementLabels.push(labels[i]);
-             improvementData.push(lap);
-         }
-     }
- 
-     window.chart = new Chart(ctx, {
-         type: 'line',
-         data: {
-             labels: labels,
-             datasets: [{
-                 label: 'Best Lap',
-                 data: data,
-                 borderColor: 'rgb(75, 192, 192)',
-                 tension: 0.1,
-                 pointBackgroundColor: 'rgb(75, 192, 192)',
-diff --git a/templates/track.html b/templates/track.html
-index f019b084ce5dc03e6af5dbd6c1c71d08fde03ddd..ba0bbdf21c68ed96156f73deb9f3854b939c13b5 100644
---- a/templates/track.html
-+++ b/templates/track.html
-@@ -207,121 +215,169 @@ document.addEventListener("DOMContentLoaded", function () {
-     }
- 
-     function filterByTimeRange(range) {
-         const now = new Date();
-         let fromDate = null;
- 
-         if (range === 'this_month') {
-             fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
-         } else if (range === 'this_week') {
-             const day = now.getDay() || 7;
-             fromDate = new Date(now);
-             fromDate.setDate(now.getDate() - day + 1);
-         } else if (range === 'this_year') {
-             fromDate = new Date(now.getFullYear(), 0, 1);
-         } else if (range === 'custom') {
-             const from = document.getElementById('fromDate').value;
-             const to = document.getElementById('toDate').value;
-             if (from && to) {
-                 fromDate = new Date(from);
-                 const toDate = new Date(to);
-                 return labels.reduce((acc, dateStr, i) => {
-                     const d = new Date(dateStr);
-                     if (d >= fromDate && d <= toDate) {
-                         acc.labels.push(dateStr);
-                         acc.data.push(data[i]);
-+                        acc.indices.push(i);
-                     }
-                     return acc;
--                }, { labels: [], data: [] });
-+                }, { labels: [], data: [], indices: [] });
-             } else {
--                return { labels: [], data: [] };
-+                return { labels: [], data: [], indices: [] };
-             }
-         }
- 
-         return labels.reduce((acc, dateStr, i) => {
-             const d = new Date(dateStr);
-             if (!fromDate || d >= fromDate) {
-                 acc.labels.push(dateStr);
-                 acc.data.push(data[i]);
-+                acc.indices.push(i);
-             }
-             return acc;
--        }, { labels: [], data: [] });
-+        }, { labels: [], data: [], indices: [] });
-     }
- 
-     function updateChart() {
-         chart.resetZoom();
-         const viewMode = document.getElementById('timeFilter').value;
-         const timeRange = document.getElementById('rangeFilter').value;
-         const result = filterByTimeRange(timeRange);
- 
-         filteredLabels = result.labels;
-         filteredData = result.data;
-+        let indices = result.indices;
-+
-+        if (document.getElementById('driftToggle').checked) {
-+            let removed = 0;
-+            let removedDates = [];
-+            let tmpLabels = [], tmpData = [], tmpIndices = [];
-+            for (let i = 0; i < filteredLabels.length; i++) {
-+                if (driftFlags[indices[i]]) {
-+                    removed++;
-+                    removedDates.push(filteredLabels[i]);
-+                } else {
-+                    tmpLabels.push(filteredLabels[i]);
-+                    tmpData.push(filteredData[i]);
-+                    tmpIndices.push(indices[i]);
-+                }
-+            }
-+            filteredLabels = tmpLabels;
-+            filteredData = tmpData;
-+            indices = tmpIndices;
-+            const uniqueDates = [...new Set(removedDates.map(d => d.split(' ')[0]))];
-+            document.getElementById('driftInfo').textContent =
-+                `Filtered ${removed} sessions on ${uniqueDates.length} drift nights. ` + uniqueDates.join(', ');
-+        } else {
-+            document.getElementById('driftInfo').textContent = '';
-+        }
- 
-         if (viewMode === 'improvement') {
-             let impLabels = [];
-             let impData = [];
-             let best = Infinity;
-             for (let i = 0; i < filteredLabels.length; i++) {
-                 const lap = filteredData[i];
-                 if (lap < best) {
-                     best = lap;
-                     impLabels.push(filteredLabels[i]);
-                     impData.push(lap);
-                 }
-             }
-             chart.data.labels = impLabels;
-             chart.data.datasets[0].data = impData;
-         } else if (["daily", "weekly", "monthly"].includes(viewMode)) {
-             let grouped = {};
-             for (let i = 0; i < filteredLabels.length; i++) {
-                 let key = filteredLabels[i];
-                 if (viewMode === 'monthly') key = key.slice(0, 7);
-                 else if (viewMode === 'weekly') key = key.slice(0, 4) + '-W' + getWeek(key);
-                 if (!(key in grouped) || grouped[key] > filteredData[i]) {
-                     grouped[key] = filteredData[i];
-                 }
-             }
-             chart.data.labels = Object.keys(grouped);
-             chart.data.datasets[0].data = Object.values(grouped);
-         } else {
-             chart.data.labels = filteredLabels;
-             chart.data.datasets[0].data = filteredData;
-         }
-         chart.update();
-     }
- 
-     document.getElementById('timeFilter').addEventListener('change', updateChart);
-     document.getElementById('rangeFilter').addEventListener('change', function () {
-         const selected = this.value;
-         document.getElementById('customRangeInputs').style.display = (selected === 'custom') ? 'block' : 'none';
-         updateChart();
-     });
-     document.getElementById('fromDate').addEventListener('change', updateChart);
-     document.getElementById('toDate').addEventListener('change', updateChart);
-     document.getElementById('resetZoom').addEventListener('click', () => {
-         chart.resetZoom();
-     });
-+    document.getElementById('driftToggle').addEventListener('change', updateChart);
-+
-+    const MAX_ROWS = 20;
-+    const table = document.getElementById('lapsTable');
-+    const btnToggle = document.getElementById('toggleRows');
-+    const rows = Array.from(table.tBodies[0].rows);
-+    if (rows.length > MAX_ROWS) {
-+        rows.slice(MAX_ROWS).forEach(r => r.classList.add('d-none'));
-+        btnToggle.addEventListener('click', () => {
-+            const hidden = table.querySelectorAll('tbody tr.d-none');
-+            if (hidden.length) {
-+                hidden.forEach(r => r.classList.remove('d-none'));
-+                btnToggle.textContent = 'Show Less';
-+            } else {
-+                rows.slice(MAX_ROWS).forEach(r => r.classList.add('d-none'));
-+                btnToggle.textContent = 'Show All';
-+            }
-+        });
-+    } else {
-+        btnToggle.style.display = 'none';
-+    }
-     updateChart();
- 
-     let sortDirections = [];
-     window.sortTable = function (colIndex) {
-         const table = document.getElementById("lapsTable");
-         const tbody = table.tBodies[0];
-         const rows = Array.from(tbody.rows);
-         sortDirections[colIndex] = !sortDirections[colIndex];
-         const dir = sortDirections[colIndex] ? 1 : -1;
- 
-         rows.sort((a, b) => {
-             let A = a.cells[colIndex]?.innerText.trim() || "";
-             let B = b.cells[colIndex]?.innerText.trim() || "";
-             if (colIndex === 0) {
-                 const dateA = new Date(A);
-                 const dateB = new Date(B);
-                 return (dateA - dateB) * dir;
-             }
-             let nA = parseFloat(A), nB = parseFloat(B);
-             if (!isNaN(nA) && !isNaN(nB)) return (nA - nB) * dir;
-             return A.localeCompare(B) * dir;
-         });
-         rows.forEach(r => tbody.appendChild(r));
-     };
- });
+ {% endblock %}
+
