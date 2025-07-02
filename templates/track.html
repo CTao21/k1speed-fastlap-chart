@@ -35,20 +35,22 @@
                 </div>
                 <div id="customRangeInputs" style="display:none;">
                     <label for="fromDate" class="form-label me-1">From:</label>
-                    <input type="date" id="fromDate" class="form-control form-control-sm d-inline w-auto me-2">
+                    <input type="date" id="fromDate" class="form-control form-control-sm d-inline w-auto me-2" placeholder="mm/dd/yyyy">
                     <label for="toDate" class="form-label me-1">To:</label>
-                    <input type="date" id="toDate" class="form-control form-control-sm d-inline w-auto">
+                    <input type="date" id="toDate" class="form-control form-control-sm d-inline w-auto" placeholder="mm/dd/yyyy">
                 </div>
                 <button id="resetZoom" class="btn btn-outline-secondary btn-sm">Reset Zoom</button>
             </div>
 
-            <!-- New Chart Container -->
+            <!-- Updated Chart Container -->
             <div class="chart-container-ios mt-3">
-                <canvas id="progressChart" height="400"></canvas>
+                <div style="position: relative; width: 100%;">
+                    <canvas id="progressChart" style="touch-action: none; width: 100%; height: 400px;"></canvas>
+                </div>
             </div>
         </div>
 
-        <!-- Session Table Section -->
+        <!-- Session Table Section (unchanged) -->
         <div class="table-container-ios mt-4">
             <table id="lapsTable" class="table table-striped">
                 <thead>
@@ -90,16 +92,16 @@
     background-color: #fff;
     padding: 10px;
     border-radius: 8px;
-    overflow: hidden;
+    overflow: auto;
     -webkit-overflow-scrolling: touch;
-    touch-action: none;
     width: 100%;
 }
+
 #progressChart {
-    width: 100% !important;
-    height: auto !important;
+    max-width: 100%;
+    height: auto;
     max-height: 400px;
-    touch-action: pinch-zoom;
+    touch-action: pan-x pinch-zoom;
 }
 
 /* Table styles (unchanged) */
