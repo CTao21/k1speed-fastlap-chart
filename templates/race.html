@@ -27,6 +27,8 @@
 <script>
   window.addEventListener("load", () => {
   const lapTimes = {{ laps | tojson }};
+  const baseTime = {{ personal_best | tojson }};
+  const lapDiffs = lapTimes.map(t => t - baseTime);
   const ctx = document.getElementById('lapChart').getContext('2d');
 
   new Chart(ctx, {
@@ -35,7 +37,7 @@
       labels: lapTimes.map((_, i) => `Lap ${i + 1}`),
       datasets: [{
         label: 'Lap Time',
-        data: lapTimes,
+        data: lapDiffs,
         borderColor: '#007bff',
         backgroundColor: 'rgba(0,123,255,0.1)',
         tension: 0.3,
@@ -51,7 +53,7 @@
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: ctx => `${ctx.label}: ${ctx.parsed.y.toFixed(3)}s`
+            label: ctx => `Lap ${ctx.dataIndex + 1}: ${lapTimes[ctx.dataIndex].toFixed(3)}s`
           }
         },
         zoom: {
@@ -72,8 +74,8 @@
           ticks: { autoSkip: false }
         },
         y: {
-          title: { display: true, text: 'Lap Time (s)' },
-          reverse: true,
+          title: { display: true, text: 'Seconds Over Best' },
+          beginAtZero: true,
           ticks: { callback: v => v.toFixed(2) }
         }
       }
