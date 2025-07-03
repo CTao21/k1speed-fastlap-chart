@@ -98,40 +98,82 @@ document.addEventListener("DOMContentLoaded", function () {
         return { fromDate, toDate };
     }
 
+    // Build the scatter datasets by ordering every session chronologically
+    // across tracks. Each session becomes a dot whose y-position is the
+    // running count for its date/month/year key. The x-axis labels span the
+    // selected range so missing dates appear as gaps, but we do not render
+    // zero-count points.
     function buildDatasets(sortBy, range) {
         const { fromDate, toDate } = getRange(range);
-        let maxCount = 0;
-        const datasets = trackNames.map((name, idx) => {
-            const data = [];
-            const counts = {};
-            const dates = trackData[name].slice().sort();
-            for (const d of dates) {
+
+        const sessions = [];
+        trackNames.forEach(name => {
+            for (const d of trackData[name]) {
                 const dt = new Date(d);
                 if (fromDate && dt < fromDate) continue;
                 if (toDate && dt > toDate) continue;
-                let key = d;
-                if (sortBy === 'month') key = d.slice(0, 7);
-                else if (sortBy === 'year') key = d.slice(0, 4);
-                counts[key] = (counts[key] || 0) + 1;
-                data.push({ x: key, y: counts[key] });
-                if (counts[key] > maxCount) maxCount = counts[key];
+                sessions.push({ track: name, date: dt });
             }
-            return {
-                label: name,
-                data: data,
-                borderColor: colors[idx % colors.length],
-                backgroundColor: colors[idx % colors.length],
-                pointRadius: 5,
-                showLine: false
-            };
         });
-        return { datasets, maxCount };
+
+        sessions.sort((a, b) => a.date - b.date);
+
+        if (!sessions.length) {
+            return { labels: [], datasets: [], maxCount: 0 };
+        }
+
+        const counts = {};
+        const dataPerTrack = {};
+        trackNames.forEach(name => { dataPerTrack[name] = []; });
+        let earliest = sessions[0].date;
+        let latest = sessions[0].date;
+        let maxCount = 0;
+
+        sessions.forEach(s => {
+            let key = s.date.toISOString().slice(0, 10);
+            if (sortBy === 'month') key = key.slice(0, 7);
+            else if (sortBy === 'year') key = key.slice(0, 4);
+            counts[key] = (counts[key] || 0) + 1;
+            dataPerTrack[s.track].push({ x: key, y: counts[key] });
+            if (counts[key] > maxCount) maxCount = counts[key];
+            if (s.date < earliest) earliest = s.date;
+            if (s.date > latest) latest = s.date;
+        });
+
+        const start = fromDate ? new Date(fromDate) : earliest;
+        const end = toDate ? new Date(toDate) : latest;
+        const labels = [];
+        const current = new Date(start);
+        while (current <= end) {
+            if (sortBy === 'month') {
+                labels.push(current.toISOString().slice(0, 7));
+                current.setMonth(current.getMonth() + 1);
+            } else if (sortBy === 'year') {
+                labels.push(String(current.getFullYear()));
+                current.setFullYear(current.getFullYear() + 1);
+            } else {
+                labels.push(current.toISOString().slice(0, 10));
+                current.setDate(current.getDate() + 1);
+            }
+        }
+
+        const datasets = trackNames.map((name, idx) => ({
+            label: name,
+            data: dataPerTrack[name],
+            borderColor: colors[idx % colors.length],
+            backgroundColor: colors[idx % colors.length],
+            pointRadius: 5,
+            showLine: false
+        }));
+
+        return { labels, datasets, maxCount };
     }
 
     function updateChart() {
         const range = document.getElementById('rangeFilter').value;
         const sortBy = document.getElementById('sortBy').value;
         const result = buildDatasets(sortBy, range);
+        chart.data.labels = result.labels;
         chart.data.datasets = result.datasets;
         chart.options.scales.y.max = result.maxCount + 1;
         chart.update();
