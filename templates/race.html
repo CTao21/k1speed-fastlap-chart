@@ -24,7 +24,8 @@
     <div class="chart-container-ios mt-3 mb-2">
       <canvas id="lapChart" style="touch-action:none; width:100%; height:400px;"></canvas>
     </div>
-    <button id="toggleOutliers" class="btn btn-outline-secondary btn-sm mb-3">Filter Outliers</button>
+    <button id="toggleOutliers" class="btn btn-warning btn-sm mb-1">Filter Outliers</button>
+    <div id="outlierInfo" class="text-muted small mb-3"></div>
   </div>
 </div>
 <script>
@@ -96,7 +97,7 @@
         y: {
           title: { display: true, text: 'Lap Time (s)' },
           min: baseTime,
-          ticks: { callback: v => v.toFixed(2) }
+          ticks: { callback: v => v.toFixed(3) }
         }
       }
     }
@@ -105,15 +106,24 @@
   function updateChart() {
     const labels = [];
     const vals = [];
+    const removed = [];
     for (let i = 0; i < lapTimes.length; i++) {
       if (!hideOutliers || !outlierFlags[i]) {
         labels.push(`Lap ${i + 1}`);
         vals.push(lapTimes[i]);
+      } else {
+        removed.push(`Lap ${i + 1}: ${lapTimes[i].toFixed(3)}s`);
       }
     }
     chart.data.labels = labels;
     chart.data.datasets[0].data = vals;
     chart.update();
+    const info = document.getElementById('outlierInfo');
+    if (hideOutliers && removed.length) {
+      info.textContent = 'Filtered ' + removed.join(', ');
+    } else {
+      info.textContent = '';
+    }
   }
 
   const btn = document.getElementById('toggleOutliers');

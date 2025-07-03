@@ -85,7 +85,7 @@
                         <td>{{ "%.3f"|format(s.avg_lap|float) }}</td>
                         <td>{{ s.fastest_lap_num }}</td>
                         {% for lap in s.laps %}
-                        <td>{{ lap }}</td>
+                        <td>{{ "%.3f"|format(lap|float) }}</td>
                         {% endfor %}
                         {% for i in range(16 - s.laps|length) %}
                         <td></td>
@@ -309,7 +309,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 `Filtered ${removed} sessions on ${uniqueDates.length} drift nights. ` + uniqueDates.join(', ');
             driftAfterDiv.style.display = uniqueDates.length ? 'block' : 'none';
 
-            if (afterDriftDays > 0 && driftTimes.length) {
+            if (afterDriftDays >= 0 && driftTimes.length) {
                 let tmpL = [], tmpD = [], tmpT = [], tmpI = [];
                 let removedAfter = 0;
                 for (let i = 0; i < filteredLabels.length; i++) {
@@ -320,6 +320,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         start4.setHours(16,0,0,0);
                         const end = new Date(start4);
                         end.setDate(end.getDate() + afterDriftDays);
+                        end.setHours(23,59,59,999);
                         if (dt >= start4 && dt <= end) { exclude = true; break; }
                     }
                     if (exclude) {
