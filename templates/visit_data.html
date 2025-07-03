@@ -20,8 +20,9 @@
       </select>
       <label for="sortBy" class="form-label ms-2 me-2">Sort By:</label>
       <select id="sortBy" class="form-select form-select-sm d-inline w-auto">
-        <option value="day" selected>Day</option>
-        <option value="month">Month</option>
+        <option value="day">Day</option>
+        <option value="week">Week</option>
+        <option value="month" selected>Month</option>
         <option value="year">Year</option>
       </select>
       <div id="customRangeInputs" style="display:none;">
@@ -114,6 +115,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 let key = d;
                 if (sortBy === 'month') key = d.slice(0, 7);
                 else if (sortBy === 'year') key = d.slice(0, 4);
+                else if (sortBy === 'week') {
+                    const dtCopy = new Date(dt);
+                    const day = dtCopy.getDay() || 7;
+                    dtCopy.setDate(dtCopy.getDate() - day + 1); // Monday start
+                    key = dtCopy.toISOString().slice(0, 10);
+                }
                 sessions.push({ track: name, key: key, date: dt });
             });
         });
@@ -147,6 +154,12 @@ document.addEventListener("DOMContentLoaded", function () {
             } else if (sortBy === 'year') {
                 labels.push(String(current.getFullYear()));
                 current.setFullYear(current.getFullYear() + 1);
+            } else if (sortBy === 'week') {
+                const weekStart = new Date(current);
+                const day = weekStart.getDay() || 7;
+                weekStart.setDate(weekStart.getDate() - day + 1);
+                labels.push(weekStart.toISOString().slice(0, 10));
+                current.setDate(current.getDate() + 7);
             } else {
                 labels.push(current.toISOString().slice(0, 10));
                 current.setDate(current.getDate() + 1);
