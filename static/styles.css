@@ -145,6 +145,14 @@ body {
     margin-bottom: 1rem;
 }
 
+/* Race detail chart */
+#lapChart {
+    display: block;
+    width: 100%;
+    height: 300px !important;
+    margin-bottom: 1rem;
+}
+
 /* Make lap table more usable */
 .table-responsive {
     overflow-x: auto;
