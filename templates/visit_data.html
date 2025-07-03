@@ -100,38 +100,78 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function buildDatasets(sortBy, range) {
         const { fromDate, toDate } = getRange(range);
-        let maxCount = 0;
-        const datasets = trackNames.map((name, idx) => {
-            const data = [];
-            const counts = {};
-            const dates = trackData[name].slice().sort();
+
+        let earliest = null;
+        let latest = null;
+        const sessions = [];
+
+        trackNames.forEach(name => {
+            const dates = trackData[name];
             for (const d of dates) {
                 const dt = new Date(d);
                 if (fromDate && dt < fromDate) continue;
                 if (toDate && dt > toDate) continue;
+                if (!earliest || dt < earliest) earliest = new Date(dt);
+                if (!latest || dt > latest) latest = new Date(dt);
                 let key = d;
                 if (sortBy === 'month') key = d.slice(0, 7);
                 else if (sortBy === 'year') key = d.slice(0, 4);
-                counts[key] = (counts[key] || 0) + 1;
-                data.push({ x: key, y: counts[key] });
-                if (counts[key] > maxCount) maxCount = counts[key];
+                sessions.push({ track: name, key: key, date: dt });
             }
-            return {
-                label: name,
-                data: data,
-                borderColor: colors[idx % colors.length],
-                backgroundColor: colors[idx % colors.length],
-                pointRadius: 5,
-                showLine: false
-            };
         });
-        return { datasets, maxCount };
+
+        if (!earliest || !latest) {
+            return { labels: [], datasets: [], maxCount: 0 };
+        }
+
+        sessions.sort((a, b) => a.date - b.date);
+
+        const counts = {};
+        const dataPerTrack = {};
+        trackNames.forEach(name => { dataPerTrack[name] = []; });
+        let maxCount = 0;
+
+        sessions.forEach(s => {
+            counts[s.key] = (counts[s.key] || 0) + 1;
+            const y = counts[s.key];
+            dataPerTrack[s.track].push({ x: s.key, y: y });
+            if (y > maxCount) maxCount = y;
+        });
+
+        const start = fromDate ? new Date(fromDate) : earliest;
+        const end = toDate ? new Date(toDate) : latest;
+        const labels = [];
+        const current = new Date(start);
+        while (current <= end) {
+            if (sortBy === 'month') {
+                labels.push(current.toISOString().slice(0, 7));
+                current.setMonth(current.getMonth() + 1);
+            } else if (sortBy === 'year') {
+                labels.push(String(current.getFullYear()));
+                current.setFullYear(current.getFullYear() + 1);
+            } else {
+                labels.push(current.toISOString().slice(0, 10));
+                current.setDate(current.getDate() + 1);
+            }
+        }
+
+        const datasets = trackNames.map((name, idx) => ({
+            label: name,
+            data: dataPerTrack[name],
+            borderColor: colors[idx % colors.length],
+            backgroundColor: colors[idx % colors.length],
+            pointRadius: 5,
+            showLine: false
+        }));
+
+        return { labels, datasets, maxCount };
     }
 
     function updateChart() {
         const range = document.getElementById('rangeFilter').value;
         const sortBy = document.getElementById('sortBy').value;
         const result = buildDatasets(sortBy, range);
+        chart.data.labels = result.labels;
         chart.data.datasets = result.datasets;
         chart.options.scales.y.max = result.maxCount + 1;
         chart.update();
