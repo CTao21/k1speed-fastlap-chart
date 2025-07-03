@@ -86,6 +86,7 @@ body {
 }
 
 .track-card {
+    position: relative;
     background: rgba(255,255,255,0.9);
     border-radius: 8px;
     padding: 1.5rem;
@@ -96,6 +97,16 @@ body {
 .track-card:hover {
     transform: translateY(-3px);
     text-decoration: none;
+}
+
+.track-card-img {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
 }
 
 /* Charts */

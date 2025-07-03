@@ -26,7 +26,8 @@
   <div class="row">
     {% for track_name, data in tracks.items() %}
     <div class="col-md-6 mb-4">
-      <div class="card h-100">
+      <div class="card h-100 track-card position-relative">
+        <img src="{{ url_for('static', filename='img/tracks/' + data.raw_name + '.jpeg') }}" class="track-card-img" alt="{{ track_name }}">
         <div class="card-body d-flex flex-column">
           <h5 class="card-title">{{ track_name }}</h5>
           <p class="card-text mb-1">Sessions: {{ data.sessions }}</p>
