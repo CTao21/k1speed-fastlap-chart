@@ -8,6 +8,7 @@
       <a href="{{ url_for('results') }}" class="btn btn-outline-secondary">Back to Results</a>
     </div>
     <p><strong>Favourite Track:</strong> {{ favourite_track }}</p>
+    <p class="text-warning mb-2"><em>This page is a work in progress.</em></p>
 
     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
       <label for="rangeFilter" class="form-label me-2">Time Range:</label>
@@ -63,7 +64,12 @@ document.addEventListener("DOMContentLoaded", function () {
         data: { datasets: [] },
         options: {
             responsive: true,
-            plugins: { legend: { display: true } },
+            plugins: {
+                legend: { display: true },
+                tooltip: { enabled: false }
+            },
+            hover: { mode: null },
+            interaction: { mode: null },
             scales: {
                 x: { type: 'category', title: { display: true, text: 'Date' } },
                 y: {
