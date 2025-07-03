@@ -8,7 +8,7 @@
     <div class="text-center mb-4">
       {% if race_session.best_lap == personal_best %}
         <h5>Fastest Lap: <strong>{{ '%.3f' % race_session.best_lap }}s</strong>
-          <span class="badge bg-success ms-2">🎉 New Personal Record!</span>
+          <span class="badge bg-success ms-2">Personal Track Best</span>
         </h5>
       {% else %}
         <h5>Fastest Lap: <strong>{{ '%.3f' % race_session.best_lap }}s</strong>
