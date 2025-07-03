@@ -67,6 +67,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 x: { type: 'category', title: { display: true, text: 'Date' } },
                 y: {
                     beginAtZero: true,
+                    max: 2,
                     ticks: { stepSize: 1 },
                     title: { display: true, text: 'Sessions' }
                 }
@@ -102,10 +103,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const { fromDate, toDate } = getRange(range);
         let earliest = null;
         let latest = null;
-        const countsPerTrack = {};
+        const sessions = [];
 
         trackNames.forEach(name => {
-            const counts = {};
             const dates = trackData[name];
             for (const d of dates) {
                 const dt = new Date(d);
@@ -116,14 +116,22 @@ document.addEventListener("DOMContentLoaded", function () {
                 let key = d;
                 if (sortBy === 'month') key = d.slice(0, 7);
                 else if (sortBy === 'year') key = d.slice(0, 4);
-                counts[key] = (counts[key] || 0) + 1;
+                sessions.push({ track: name, key: key, date: dt });
             }
-            countsPerTrack[name] = counts;
         });
 
         if (!earliest || !latest) {
             return { labels: [], datasets: [], maxCount: 0 };
         }
+
+        sessions.sort((a, b) => a.date - b.date);
+
+        const dataPerTrack = {};
+        trackNames.forEach(name => { dataPerTrack[name] = []; });
+
+        sessions.forEach(s => {
+            dataPerTrack[s.track].push({ x: s.key, y: 1 });
+        });
 
         const start = fromDate ? new Date(fromDate) : earliest;
         const end = toDate ? new Date(toDate) : latest;
@@ -142,25 +150,16 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        let maxCount = 0;
-        const datasets = trackNames.map((name, idx) => {
-            const counts = countsPerTrack[name] || {};
-            const data = labels.map(l => {
-                const val = counts[l] || 0;
-                if (val > maxCount) maxCount = val;
-                return { x: l, y: val };
-            });
-            return {
-                label: name,
-                data: data,
-                borderColor: colors[idx % colors.length],
-                backgroundColor: colors[idx % colors.length],
-                pointRadius: 5,
-                showLine: false
-            };
-        });
+        const datasets = trackNames.map((name, idx) => ({
+            label: name,
+            data: dataPerTrack[name],
+            borderColor: colors[idx % colors.length],
+            backgroundColor: colors[idx % colors.length],
+            pointRadius: 5,
+            showLine: false
+        }));
 
-        return { labels, datasets, maxCount };
+        return { labels, datasets, maxCount: 1 };
     }
 
     function updateChart() {
@@ -169,7 +168,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const result = buildDatasets(sortBy, range);
         chart.data.labels = result.labels;
         chart.data.datasets = result.datasets;
-        chart.options.scales.y.max = result.maxCount + 1;
+        chart.options.scales.y.max = 2;
         chart.update();
     }
 
