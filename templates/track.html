@@ -54,6 +54,11 @@
             </div>
             <small class="text-muted d-block mt-1"><em>Pinch to zoom may not work on all mobile browsers. Try zooming on desktop for best experience.</em></small>
             <div id="driftInfo" class="text-muted small"></div>
+            <div id="driftAfterDiv" class="small mt-1" style="display:none;">
+                Filter normal races during/after drift nights for
+                <input type="number" id="driftDays" value="1" min="0" class="form-control form-control-sm d-inline w-auto ms-1 me-1">days
+                <button id="applyDriftFilter" class="btn btn-outline-secondary btn-sm">Apply</button>
+            </div>
         </div>
 
         <!-- Session Table Section -->
@@ -144,11 +149,15 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!ctx) return;
 
     const labels = {{ chart_data.dates | tojson }};
+    const times = {{ chart_data.date_times | tojson }};
     const data = {{ chart_data.best_laps | tojson }};
     const driftCutoff = {{ chart_data.drift_cutoff | tojson }};
     const driftFlags = data.map(v => v >= driftCutoff);
     let filteredLabels = labels.slice();
     let filteredData = data.slice();
+    let filteredTimes = times.slice();
+
+    let afterDriftDays = 0;
 
     const improvementLabels = [];
     const improvementData = [];
@@ -239,12 +248,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (d >= fromDate && d <= toDate) {
                         acc.labels.push(dateStr);
                         acc.data.push(data[i]);
+                        acc.times.push(times[i]);
                         acc.indices.push(i);
                     }
                     return acc;
-                }, { labels: [], data: [], indices: [] });
+                }, { labels: [], data: [], times: [], indices: [] });
             } else {
-                return { labels: [], data: [], indices: [] };
+                return { labels: [], data: [], times: [], indices: [] };
             }
         }
 
@@ -253,10 +263,11 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!fromDate || d >= fromDate) {
                 acc.labels.push(dateStr);
                 acc.data.push(data[i]);
+                acc.times.push(times[i]);
                 acc.indices.push(i);
             }
             return acc;
-        }, { labels: [], data: [], indices: [] });
+        }, { labels: [], data: [], times: [], indices: [] });
     }
 
     function updateChart() {
@@ -267,30 +278,69 @@ document.addEventListener("DOMContentLoaded", function () {
 
         filteredLabels = result.labels;
         filteredData = result.data;
+        filteredTimes = result.times;
         let indices = result.indices;
+
+        const driftAfterDiv = document.getElementById('driftAfterDiv');
 
         if (document.getElementById('driftToggle').checked) {
             let removed = 0;
             let removedDates = [];
-            let tmpLabels = [], tmpData = [], tmpIndices = [];
+            let driftTimes = [];
+            let tmpLabels = [], tmpData = [], tmpTimes = [], tmpIndices = [];
             for (let i = 0; i < filteredLabels.length; i++) {
                 if (driftFlags[indices[i]]) {
                     removed++;
                     removedDates.push(filteredLabels[i]);
+                    driftTimes.push(new Date(times[indices[i]]));
                 } else {
                     tmpLabels.push(filteredLabels[i]);
                     tmpData.push(filteredData[i]);
+                    tmpTimes.push(filteredTimes[i]);
                     tmpIndices.push(indices[i]);
                 }
             }
             filteredLabels = tmpLabels;
             filteredData = tmpData;
+            filteredTimes = tmpTimes;
             indices = tmpIndices;
             const uniqueDates = [...new Set(removedDates.map(d => d.split(' ')[0]))];
             document.getElementById('driftInfo').textContent =
                 `Filtered ${removed} sessions on ${uniqueDates.length} drift nights. ` + uniqueDates.join(', ');
+            driftAfterDiv.style.display = uniqueDates.length ? 'block' : 'none';
+
+            if (afterDriftDays > 0 && driftTimes.length) {
+                let tmpL = [], tmpD = [], tmpT = [], tmpI = [];
+                let removedAfter = 0;
+                for (let i = 0; i < filteredLabels.length; i++) {
+                    const dt = new Date(filteredTimes[i]);
+                    let exclude = false;
+                    for (const start of driftTimes) {
+                        const start4 = new Date(start);
+                        start4.setHours(16,0,0,0);
+                        const end = new Date(start4);
+                        end.setDate(end.getDate() + afterDriftDays);
+                        if (dt >= start4 && dt <= end) { exclude = true; break; }
+                    }
+                    if (exclude) {
+                        removedAfter++;
+                    } else {
+                        tmpL.push(filteredLabels[i]);
+                        tmpD.push(filteredData[i]);
+                        tmpT.push(filteredTimes[i]);
+                        tmpI.push(indices[i]);
+                    }
+                }
+                filteredLabels = tmpL;
+                filteredData = tmpD;
+                filteredTimes = tmpT;
+                indices = tmpI;
+                if (removedAfter)
+                    document.getElementById('driftInfo').textContent += ` Filtered ${removedAfter} more sessions after drift nights.`;
+            }
         } else {
             document.getElementById('driftInfo').textContent = '';
+            driftAfterDiv.style.display = 'none';
         }
 
         if (viewMode === 'improvement') {
@@ -338,6 +388,13 @@ document.addEventListener("DOMContentLoaded", function () {
         chart.resetZoom();
     });
     document.getElementById('driftToggle').addEventListener('change', updateChart);
+    const applyBtn = document.getElementById('applyDriftFilter');
+    if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+            afterDriftDays = parseInt(document.getElementById('driftDays').value) || 0;
+            updateChart();
+        });
+    }
 
     const MAX_ROWS = 10;
     const table = document.getElementById('lapsTable');

@@ -448,7 +448,7 @@ def track_detail(track_name):
     user = User.query.filter_by(email=session['email']).first()
     t    = Track.query.filter_by(raw_name=track_name, user_id=user.id).first()
 
-    sessions, dates, bests = [], [], []
+    sessions, dates, bests, date_times = [], [], [], []
     for s in sorted(t.sessions, key=lambda x: x.date, reverse=True):
         lap_list = eval(s.lap_data or '[]')
         sessions.append({
@@ -461,6 +461,7 @@ def track_detail(track_name):
             'laps': lap_list
         })
         dates.append(s.date.strftime('%Y-%m-%d'))
+        date_times.append(s.date.strftime('%Y-%m-%d %H:%M'))
         bests.append(s.best_lap)
 
     drift_cutoff = 0
@@ -480,7 +481,8 @@ def track_detail(track_name):
         'best_laps': bests,
         'improvement_dates': improvement_dates,
         'improvement_laps': improvement_laps,
-        'drift_cutoff': drift_cutoff
+        'drift_cutoff': drift_cutoff,
+        'date_times': date_times
     }
 
     return render_template('track.html',

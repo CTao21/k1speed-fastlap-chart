@@ -21,7 +21,10 @@
       <p>Total Laps: {{ race_session.total_laps }}</p>
     </div>
 
-    <canvas id="lapChart" height="120"></canvas>
+    <div class="chart-container-ios mt-3 mb-2">
+      <canvas id="lapChart" style="touch-action:none; width:100%; height:400px;"></canvas>
+    </div>
+    <button id="toggleOutliers" class="btn btn-outline-secondary btn-sm mb-3">Filter Outliers</button>
   </div>
 </div>
 <script>
@@ -30,7 +33,20 @@
   const baseTime = {{ personal_best | tojson }};
   const ctx = document.getElementById('lapChart').getContext('2d');
 
-  new Chart(ctx, {
+  function calcOutliers(times) {
+    const sorted = [...times].sort((a,b)=>a-b);
+    const q1 = sorted[Math.floor(sorted.length/4)];
+    const q3 = sorted[Math.floor(sorted.length*3/4)];
+    const iqr = q3 - q1;
+    const lower = q1 - 1.5*iqr;
+    const upper = q3 + 1.5*iqr;
+    return times.map(t => t < lower || t > upper);
+  }
+
+  const outlierFlags = calcOutliers(lapTimes);
+  let hideOutliers = false;
+
+  const chart = new Chart(ctx, {
     type: 'line',
     data: {
       labels: lapTimes.map((_, i) => `Lap ${i + 1}`),
@@ -85,6 +101,47 @@
       }
     }
   });
+
+  function updateChart() {
+    const labels = [];
+    const vals = [];
+    for (let i = 0; i < lapTimes.length; i++) {
+      if (!hideOutliers || !outlierFlags[i]) {
+        labels.push(`Lap ${i + 1}`);
+        vals.push(lapTimes[i]);
+      }
+    }
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = vals;
+    chart.update();
+  }
+
+  const btn = document.getElementById('toggleOutliers');
+  btn.addEventListener('click', () => {
+    hideOutliers = !hideOutliers;
+    btn.textContent = hideOutliers ? 'Show Outliers' : 'Filter Outliers';
+    updateChart();
+  });
+
+  updateChart();
   });
 </script>
+<style>
+.chart-container-ios {
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    touch-action: none;
+}
+
+#lapChart {
+    max-width: 100%;
+    height: auto;
+    max-height: 400px;
+    touch-action: none;
+}
+</style>
 {% endblock %}
