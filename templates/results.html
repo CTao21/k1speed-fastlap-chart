@@ -7,8 +7,8 @@
   <div class="main-card mb-4 p-4">
     <div>
       <h3 class="mb-1">{{ username }}</h3>
-      <p class="mb-1"><strong>Total Races:</strong>
-        {{ tracks.values()|sum(attribute='sessions') }}</p>
+  <p class="mb-1"><strong>Total Races:</strong>
+        {{ total_races }}</p>
       <div class="mt-2">
         <a href="{{ url_for('profile_setup') }}"
            class="btn btn-sm btn-outline-secondary me-2">
@@ -23,12 +23,12 @@
   </div>
 
   <!-- Grid of track summary cards -->
-  <div class="row">
-    {% for track_name, data in tracks.items() %}
-    <div class="col-md-6 mb-4">
-      <div class="card h-100 track-card position-relative">
-        <img src="{{ url_for('static', filename='img/tracks/' ~ data.image_file) }}" class="track-card-img" alt="{{ track_name }}">
-        <div class="card-body d-flex flex-column">
+    <div class="row">
+      {% for track_name, data in tracks %}
+      <div class="col-md-6 mb-4">
+        <div class="card h-100 track-card">
+          <img src="{{ url_for('static', filename='img/tracks/' ~ data.image_file) }}" class="track-card-img card-img-top" alt="{{ track_name }}">
+          <div class="card-body d-flex flex-column">
           <h5 class="card-title">{{ track_name }}</h5>
           <p class="card-text mb-1">Sessions: {{ data.sessions }}</p>
           <p class="card-text mb-1">First Race: {{ data.first_date }}</p>
