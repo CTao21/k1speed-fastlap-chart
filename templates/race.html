@@ -25,6 +25,7 @@
   </div>
 </div>
 <script>
+  window.addEventListener("load", () => {
   const lapTimes = {{ laps | tojson }};
   const ctx = document.getElementById('lapChart').getContext('2d');
 
@@ -77,6 +78,7 @@
         }
       }
     }
+  });
   });
 </script>
 {% endblock %}
