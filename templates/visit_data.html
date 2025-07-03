@@ -98,50 +98,46 @@ document.addEventListener("DOMContentLoaded", function () {
         return { fromDate, toDate };
     }
 
-    // Build the scatter datasets by ordering every session chronologically
-    // across tracks. Each session becomes a dot whose y-position is the
-    // running count for its date/month/year key. The x-axis labels span the
-    // selected range so missing dates appear as gaps, but we do not render
-    // zero-count points.
     function buildDatasets(sortBy, range) {
         const { fromDate, toDate } = getRange(range);
-
         const sessions = [];
-        trackNames.forEach(name => {
-            for (const d of trackData[name]) {
-                const dt = new Date(d);
-                if (fromDate && dt < fromDate) continue;
-                if (toDate && dt > toDate) continue;
-                sessions.push({ track: name, date: dt });
-            }
-        });
+        let earliest = null;
+        let latest = null;
 
-        sessions.sort((a, b) => a.date - b.date);
+        trackNames.forEach(name => {
+            trackData[name].forEach(d => {
+                const dt = new Date(d);
+                if (fromDate && dt < fromDate) return;
+                if (toDate && dt > toDate) return;
+                if (!earliest || dt < earliest) earliest = dt;
+                if (!latest || dt > latest) latest = dt;
+                let key = d;
+                if (sortBy === 'month') key = d.slice(0, 7);
+                else if (sortBy === 'year') key = d.slice(0, 4);
+                sessions.push({ track: name, key: key, date: dt });
+            });
+        });
 
         if (!sessions.length) {
             return { labels: [], datasets: [], maxCount: 0 };
         }
 
-        const counts = {};
+        sessions.sort((a, b) => a.date - b.date);
+
+        const countsPerKey = {};
         const dataPerTrack = {};
         trackNames.forEach(name => { dataPerTrack[name] = []; });
-        let earliest = sessions[0].date;
-        let latest = sessions[0].date;
         let maxCount = 0;
 
         sessions.forEach(s => {
-            let key = s.date.toISOString().slice(0, 10);
-            if (sortBy === 'month') key = key.slice(0, 7);
-            else if (sortBy === 'year') key = key.slice(0, 4);
-            counts[key] = (counts[key] || 0) + 1;
-            dataPerTrack[s.track].push({ x: key, y: counts[key] });
-            if (counts[key] > maxCount) maxCount = counts[key];
-            if (s.date < earliest) earliest = s.date;
-            if (s.date > latest) latest = s.date;
+            countsPerKey[s.key] = (countsPerKey[s.key] || 0) + 1;
+            const y = countsPerKey[s.key];
+            dataPerTrack[s.track].push({ x: s.key, y: y });
+            if (y > maxCount) maxCount = y;
         });
 
-        const start = fromDate ? new Date(fromDate) : earliest;
-        const end = toDate ? new Date(toDate) : latest;
+        const start = fromDate || earliest;
+        const end = toDate || latest;
         const labels = [];
         const current = new Date(start);
         while (current <= end) {
