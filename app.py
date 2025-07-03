@@ -116,6 +116,12 @@ def filter_laps_by_cutoff(display_location, laps):
     return [lap for lap in laps if lap >= cutoff]
 
 
+def track_image_filename(raw_name):
+    """Return the standardized track image filename."""
+    name = raw_name.strip().lower().replace(' ', '_')
+    return f"{name}.jpeg"
+
+
 def parse_email(msg, k1_name):
     """Parse a K1 speed results email into structured data."""
     body = extract_email_body(msg)
@@ -428,11 +434,12 @@ def results():
         best    = min(t.sessions, key=lambda s: s.best_lap)
         first   = min(t.sessions, key=lambda s: s.date)
         tracks_data[t.display_name] = {
-            'raw_name'  : t.raw_name,
-            'sessions'  : len(t.sessions),
-            'first_date': first.date.strftime('%Y-%m-%d'),
-            'best_lap'  : f"{best.best_lap:.3f}",
-            'best_date' : best.date.strftime('%Y-%m-%d')
+            'raw_name'   : t.raw_name,
+            'image_file' : track_image_filename(t.raw_name),
+            'sessions'   : len(t.sessions),
+            'first_date' : first.date.strftime('%Y-%m-%d'),
+            'best_lap'   : f"{best.best_lap:.3f}",
+            'best_date'  : best.date.strftime('%Y-%m-%d')
         }
 
     return render_template('results.html',
