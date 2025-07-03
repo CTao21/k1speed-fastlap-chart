@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="main-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2>Visit Data</h2>
+      <a href="{{ url_for('results') }}" class="btn btn-outline-secondary">Back to Results</a>
+    </div>
+    <p><strong>Favourite Track:</strong> {{ favourite_track }}</p>
+
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <label for="rangeFilter" class="form-label me-2">Time Range:</label>
+      <select id="rangeFilter" class="form-select form-select-sm d-inline w-auto">
+        <option value="all" selected>All Time</option>
+        <option value="this_week">This Week</option>
+        <option value="this_month">This Month</option>
+        <option value="this_year">This Year</option>
+        <option value="custom">Custom Range</option>
+      </select>
+      <div id="customRangeInputs" style="display:none;">
+        <label for="fromDate" class="form-label me-1">From:</label>
+        <input type="date" id="fromDate" class="form-control form-control-sm d-inline w-auto me-2">
+        <label for="toDate" class="form-label me-1">To:</label>
+        <input type="date" id="toDate" class="form-control form-control-sm d-inline w-auto">
+      </div>
+    </div>
+
+    <div class="chart-container-ios mt-3">
+      <canvas id="visitChart" style="touch-action:none; width:100%; height:400px;"></canvas>
+    </div>
+  </div>
+</div>
+
+<style>
+.chart-container-ios {
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    touch-action: none;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const trackData = {{ visit_data | tojson }};
+    const trackNames = Object.keys(trackData);
+    const colors = ['#e74c3c','#3498db','#2ecc71','#9b59b6','#f1c40f','#e67e22','#1abc9c','#34495e'];
+
+    const allDatasets = trackNames.map((name, idx) => ({
+        label: name,
+        data: trackData[name].map(d => ({x: d, y: idx})),
+        borderColor: colors[idx % colors.length],
+        backgroundColor: colors[idx % colors.length],
+        pointRadius: 5,
+        showLine: false
+    }));
+
+    const ctx = document.getElementById('visitChart');
+    const chart = new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets: JSON.parse(JSON.stringify(allDatasets)) },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: true } },
+            scales: {
+                x: { type: 'category', title: { display: true, text: 'Date' } },
+                y: {
+                    ticks: {
+                        callback: function(value) { return trackNames[value] || ''; },
+                        stepSize: 1
+                    },
+                    min: -0.5,
+                    max: trackNames.length - 0.5,
+                    title: { display: false }
+                }
+            }
+        }
+    });
+
+    function filterByRange(range) {
+        const now = new Date();
+        let fromDate = null;
+        let toDate = null;
+
+        if (range === 'this_month') {
+            fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        } else if (range === 'this_week') {
+            const day = now.getDay() || 7;
+            fromDate = new Date(now);
+            fromDate.setDate(now.getDate() - day + 1);
+        } else if (range === 'this_year') {
+            fromDate = new Date(now.getFullYear(), 0, 1);
+        } else if (range === 'custom') {
+            if (document.getElementById('fromDate').value && document.getElementById('toDate').value) {
+                fromDate = new Date(document.getElementById('fromDate').value);
+                toDate = new Date(document.getElementById('toDate').value);
+            }
+        }
+
+        chart.data.datasets.forEach((ds, idx) => {
+            const orig = allDatasets[idx].data;
+            ds.data = orig.filter(pt => {
+                const dt = new Date(pt.x);
+                if (fromDate && dt < fromDate) return false;
+                if (toDate && dt > toDate) return false;
+                return true;
+            });
+        });
+        chart.update();
+    }
+
+    document.getElementById('rangeFilter').addEventListener('change', function () {
+        document.getElementById('customRangeInputs').style.display = this.value === 'custom' ? 'block' : 'none';
+        filterByRange(this.value);
+    });
+    document.getElementById('fromDate').addEventListener('change', () => filterByRange('custom'));
+    document.getElementById('toDate').addEventListener('change', () => filterByRange('custom'));
+});
+</script>
+{% endblock %}
