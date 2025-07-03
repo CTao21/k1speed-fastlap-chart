@@ -458,6 +458,31 @@ def results():
     )
 
 
+@app.route('/visit_data')
+def visit_data():
+    if 'email' not in session:
+        return redirect(url_for('imap_login'))
+
+    user = User.query.filter_by(email=session['email']).first()
+    if not user:
+        return redirect(url_for('imap_login'))
+
+    favourite_track = None
+    if user.tracks:
+        favourite_track = max(user.tracks, key=lambda t: len(t.sessions)).display_name
+
+    visit_data = {}
+    for t in user.tracks:
+        dates = [s.date.strftime('%Y-%m-%d') for s in sorted(t.sessions, key=lambda s: s.date)]
+        if dates:
+            visit_data[t.display_name] = dates
+
+    return render_template('visit_data.html',
+                           favourite_track=favourite_track,
+                           visit_data=visit_data,
+                           username=user.username)
+
+
 @app.route('/track/<track_name>')
 def track_detail(track_name):
     if 'email' not in session:
