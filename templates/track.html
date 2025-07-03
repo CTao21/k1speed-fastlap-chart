@@ -63,16 +63,17 @@
 
         <!-- Session Table Section -->
         <div class="table-container-ios mt-4">
+            <div class="small text-muted mb-1">Click any column header to sort the table.</div>
             <table id="lapsTable" class="table table-striped">
                 <thead>
                     <tr>
-                        <th onclick="sortTable(0)"><u>Date</u> <span class="sort-icons">⇅</span></th>
-                        <th onclick="sortTable(1)"><u>Total Laps</u> <span class="sort-icons">⇅</span></th>
-                        <th onclick="sortTable(2)"><u>Best Lap</u> <span class="sort-icons">⇅</span></th>
-                        <th onclick="sortTable(3)"><u>Avg Lap</u> <span class="sort-icons">⇅</span></th>
-                        <th onclick="sortTable(4)"><u>Fastest Lap #</u> <span class="sort-icons">⇅</span></th>
+                        <th class="sortable-header" onclick="sortTable(0)"><u>Date</u> <span class="sort-icons">⇅</span></th>
+                        <th class="sortable-header" onclick="sortTable(1)"><u>Total Laps</u> <span class="sort-icons">⇅</span></th>
+                        <th class="sortable-header" onclick="sortTable(2)"><u>Best Lap</u> <span class="sort-icons">⇅</span></th>
+                        <th class="sortable-header" onclick="sortTable(3)"><u>Avg Lap</u> <span class="sort-icons">⇅</span></th>
+                        <th class="sortable-header" onclick="sortTable(4)"><u>Fastest Lap #</u> <span class="sort-icons">⇅</span></th>
                         {% for i in range(1, 17) %}
-                        <th onclick="sortTable({{ i + 4 }})"><u>Lap {{ i }}</u> <span class="sort-icons">⇅</span></th>
+                        <th class="sortable-header" onclick="sortTable({{ i + 4 }})"><u>Lap {{ i }}</u> <span class="sort-icons">⇅</span></th>
                         {% endfor %}
                     </tr>
                 </thead>
@@ -140,6 +141,18 @@
 .table-container-ios::-webkit-scrollbar-thumb {
     border-radius: 4px;
     background-color: rgba(0,0,0,.2);
+}
+
+/* Style for sortable table headers */
+#lapsTable th.sortable-header {
+    background-color: #f8f9fa;
+    color: #0d6efd;
+    cursor: pointer;
+    user-select: none;
+}
+
+#lapsTable th.sortable-header:hover {
+    background-color: #e2e6ea;
 }
 </style>
 
