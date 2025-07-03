@@ -442,9 +442,20 @@ def results():
             'best_date'  : best.date.strftime('%Y-%m-%d')
         }
 
-    return render_template('results.html',
-                           username=user.username,
-                           tracks=tracks_data)
+    sorted_tracks = sorted(
+        tracks_data.items(),
+        key=lambda x: x[1]['sessions'],
+        reverse=True
+    )
+
+    total_races = sum(len(t.sessions) for t in user.tracks)
+
+    return render_template(
+        'results.html',
+        username=user.username,
+        tracks=sorted_tracks,
+        total_races=total_races
+    )
 
 
 @app.route('/track/<track_name>')
