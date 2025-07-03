@@ -309,7 +309,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 `Filtered ${removed} sessions on ${uniqueDates.length} drift nights. ` + uniqueDates.join(', ');
             driftAfterDiv.style.display = uniqueDates.length ? 'block' : 'none';
 
-            if (afterDriftDays >= 0 && driftTimes.length) {
+            if (afterDriftDays > 0 && driftTimes.length) {
                 let tmpL = [], tmpD = [], tmpT = [], tmpI = [];
                 let removedAfter = 0;
                 for (let i = 0; i < filteredLabels.length; i++) {
@@ -319,7 +319,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         const start4 = new Date(start);
                         start4.setHours(16,0,0,0);
                         const end = new Date(start4);
-                        end.setDate(end.getDate() + afterDriftDays);
+                        end.setDate(end.getDate() + afterDriftDays - 1);
                         end.setHours(23,59,59,999);
                         if (dt >= start4 && dt <= end) { exclude = true; break; }
                     }
@@ -438,7 +438,14 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!isNaN(nA) && !isNaN(nB)) return (nA - nB) * dir;
             return A.localeCompare(B) * dir;
         });
+
         rows.forEach(r => tbody.appendChild(r));
+
+        const expanded = btnToggle.textContent === 'Show Less';
+        rows.forEach((r, i) => {
+            if (!expanded && i >= MAX_ROWS) r.classList.add('d-none');
+            else r.classList.remove('d-none');
+        });
     };
 });
 </script>

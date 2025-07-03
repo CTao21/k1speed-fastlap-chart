@@ -449,7 +449,7 @@ def track_detail(track_name):
     t    = Track.query.filter_by(raw_name=track_name, user_id=user.id).first()
 
     sessions, dates, bests, date_times = [], [], [], []
-    for s in sorted(t.sessions, key=lambda x: x.date, reverse=True):
+    for s in sorted(t.sessions, key=lambda x: x.date):
         lap_list = eval(s.lap_data or '[]')
         sessions.append({
             'id': s.id,
