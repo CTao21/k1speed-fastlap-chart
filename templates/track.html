@@ -53,13 +53,13 @@
             </div>
             <div class="d-flex justify-content-between align-items-center mt-1">
                 <small class="text-muted"><em>Zoom may not work on all mobile browsers. Try desktop.</em></small>
-                <button id="resetZoom" class="btn btn-outline-secondary btn-sm ms-2">Reset Zoom</button>
+                <button id="resetZoom" class="btn btn-outline-secondary btn-sm ms-2 chart-btn">Reset Zoom</button>
             </div>
             <div id="driftInfo" class="text-muted small"></div>
             <div id="driftAfterDiv" class="small mt-1" style="display:none;">
                 Filter normal races during/after drift nights for
                 <input type="number" id="driftDays" value="1" min="0" class="form-control form-control-sm d-inline w-auto ms-1 me-1">days
-                <button id="applyDriftFilter" class="btn btn-outline-secondary btn-sm">Apply</button>
+                <button id="applyDriftFilter" class="btn btn-outline-secondary btn-sm chart-btn">Apply</button>
             </div>
         </div>
 
@@ -99,7 +99,7 @@
             </table>
 </div>
 <div class="text-start mb-2">
-  <button id="toggleRows" class="btn btn-outline-secondary btn-sm">Show All</button>
+  <button id="toggleRows" class="btn btn-outline-secondary btn-sm chart-btn">Show All</button>
 </div>
     </div>
 </div>
@@ -157,6 +157,18 @@
 
 .sort-button {
     width: 100%;
+}
+
+.chart-btn,
+.sort-button {
+    background-color: #e74c3c;
+    border: 1px solid #000;
+    color: #fff;
+}
+
+.chart-btn:hover,
+.sort-button:hover {
+    background-color: #c0392b;
 }
 </style>
 
