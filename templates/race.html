@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="container mt-4">
-  <div class="card shadow rounded-4 p-4">
+  <div class="main-card">
     <h2 class="text-center mb-4">{{ track_name }} - Race on {{ race_session.date.strftime('%B %d, %Y at %I:%M %p') }}</h2>
 
     <div class="text-center mb-4">
@@ -24,14 +24,10 @@
     <canvas id="lapChart" height="120"></canvas>
   </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+  window.addEventListener("load", () => {
   const lapTimes = {{ laps | tojson }};
   const ctx = document.getElementById('lapChart').getContext('2d');
-
-  const minLap = Math.min(...lapTimes);
-  const maxLap = Math.max(...lapTimes);
 
   new Chart(ctx, {
     type: 'line',
@@ -57,6 +53,14 @@
           callbacks: {
             label: ctx => `${ctx.label}: ${ctx.parsed.y.toFixed(3)}s`
           }
+        },
+        zoom: {
+          pan: { enabled: true, mode: 'x' },
+          zoom: {
+            wheel: { enabled: true },
+            pinch: { enabled: true },
+            mode: 'x'
+          }
         }
       },
       scales: {
@@ -65,24 +69,16 @@
             display: true,
             text: 'Lap Number'
           },
-          ticks: {
-            autoSkip: false
-          }
+          ticks: { autoSkip: false }
         },
         y: {
-          title: {
-            display: true,
-            text: 'Lap Time (s)'
-          },
-          beginAtZero: false,
-          min: minLap - 0.2,
-          max: maxLap + 0.2,
-          ticks: {
-            stepSize: 0.1
-          }
+          title: { display: true, text: 'Lap Time (s)' },
+          reverse: true,
+          ticks: { callback: v => v.toFixed(2) }
         }
       }
     }
+  });
   });
 </script>
 {% endblock %}
