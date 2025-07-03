@@ -102,8 +102,8 @@ body {
 
 .track-card-img {
     width: 100%;
-    height: 180px;
-    object-fit: cover;
+    max-height: 180px;
+    object-fit: contain;
     border-radius: 8px 8px 0 0;
 }
 
