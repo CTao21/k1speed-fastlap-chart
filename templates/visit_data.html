@@ -67,6 +67,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 x: { type: 'category', title: { display: true, text: 'Date' } },
                 y: {
                     beginAtZero: true,
+                    max: 2,
                     ticks: { stepSize: 1 },
                     title: { display: true, text: 'Sessions' }
                 }
@@ -98,13 +99,8 @@ document.addEventListener("DOMContentLoaded", function () {
         return { fromDate, toDate };
     }
 
-    // Build datasets by merging every session across tracks in
-    // chronological order. Labels span the full date range so gaps
-    // show on the x-axis, but no dot is rendered when there were
-    // zero races for a particular period.
     function buildDatasets(sortBy, range) {
         const { fromDate, toDate } = getRange(range);
-
         let earliest = null;
         let latest = null;
         const sessions = [];
@@ -130,16 +126,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         sessions.sort((a, b) => a.date - b.date);
 
-        const counts = {};
         const dataPerTrack = {};
         trackNames.forEach(name => { dataPerTrack[name] = []; });
-        let maxCount = 0;
 
         sessions.forEach(s => {
-            counts[s.key] = (counts[s.key] || 0) + 1;
-            const y = counts[s.key];
-            dataPerTrack[s.track].push({ x: s.key, y: y });
-            if (y > maxCount) maxCount = y;
+            dataPerTrack[s.track].push({ x: s.key, y: 1 });
         });
 
         const start = fromDate ? new Date(fromDate) : earliest;
@@ -168,7 +159,7 @@ document.addEventListener("DOMContentLoaded", function () {
             showLine: false
         }));
 
-        return { labels, datasets, maxCount };
+        return { labels, datasets, maxCount: 1 };
     }
 
     function updateChart() {
@@ -177,7 +168,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const result = buildDatasets(sortBy, range);
         chart.data.labels = result.labels;
         chart.data.datasets = result.datasets;
-        chart.options.scales.y.max = result.maxCount + 1;
+        chart.options.scales.y.max = 2;
         chart.update();
     }
 
