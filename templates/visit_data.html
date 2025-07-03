@@ -18,6 +18,12 @@
         <option value="this_year">This Year</option>
         <option value="custom">Custom Range</option>
       </select>
+      <label for="sortBy" class="form-label ms-2 me-2">Sort By:</label>
+      <select id="sortBy" class="form-select form-select-sm d-inline w-auto">
+        <option value="day" selected>Day</option>
+        <option value="month">Month</option>
+        <option value="year">Year</option>
+      </select>
       <div id="customRangeInputs" style="display:none;">
         <label for="fromDate" class="form-label me-1">From:</label>
         <input type="date" id="fromDate" class="form-control form-control-sm d-inline w-auto me-2">
@@ -50,38 +56,25 @@ document.addEventListener("DOMContentLoaded", function () {
     const trackNames = Object.keys(trackData);
     const colors = ['#e74c3c','#3498db','#2ecc71','#9b59b6','#f1c40f','#e67e22','#1abc9c','#34495e'];
 
-    const allDatasets = trackNames.map((name, idx) => ({
-        label: name,
-        data: trackData[name].map(d => ({x: d, y: idx})),
-        borderColor: colors[idx % colors.length],
-        backgroundColor: colors[idx % colors.length],
-        pointRadius: 5,
-        showLine: false
-    }));
-
     const ctx = document.getElementById('visitChart');
     const chart = new Chart(ctx, {
         type: 'scatter',
-        data: { datasets: JSON.parse(JSON.stringify(allDatasets)) },
+        data: { datasets: [] },
         options: {
             responsive: true,
             plugins: { legend: { display: true } },
             scales: {
                 x: { type: 'category', title: { display: true, text: 'Date' } },
                 y: {
-                    ticks: {
-                        callback: function(value) { return trackNames[value] || ''; },
-                        stepSize: 1
-                    },
-                    min: -0.5,
-                    max: trackNames.length - 0.5,
-                    title: { display: false }
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 },
+                    title: { display: true, text: 'Sessions' }
                 }
             }
         }
     });
 
-    function filterByRange(range) {
+    function getRange(range) {
         const now = new Date();
         let fromDate = null;
         let toDate = null;
@@ -95,30 +88,64 @@ document.addEventListener("DOMContentLoaded", function () {
         } else if (range === 'this_year') {
             fromDate = new Date(now.getFullYear(), 0, 1);
         } else if (range === 'custom') {
-            if (document.getElementById('fromDate').value && document.getElementById('toDate').value) {
-                fromDate = new Date(document.getElementById('fromDate').value);
-                toDate = new Date(document.getElementById('toDate').value);
+            const f = document.getElementById('fromDate').value;
+            const t = document.getElementById('toDate').value;
+            if (f && t) {
+                fromDate = new Date(f);
+                toDate = new Date(t);
             }
         }
+        return { fromDate, toDate };
+    }
 
-        chart.data.datasets.forEach((ds, idx) => {
-            const orig = allDatasets[idx].data;
-            ds.data = orig.filter(pt => {
-                const dt = new Date(pt.x);
-                if (fromDate && dt < fromDate) return false;
-                if (toDate && dt > toDate) return false;
-                return true;
-            });
+    function buildDatasets(sortBy, range) {
+        const { fromDate, toDate } = getRange(range);
+        let maxCount = 0;
+        const datasets = trackNames.map((name, idx) => {
+            const data = [];
+            const counts = {};
+            const dates = trackData[name].slice().sort();
+            for (const d of dates) {
+                const dt = new Date(d);
+                if (fromDate && dt < fromDate) continue;
+                if (toDate && dt > toDate) continue;
+                let key = d;
+                if (sortBy === 'month') key = d.slice(0, 7);
+                else if (sortBy === 'year') key = d.slice(0, 4);
+                counts[key] = (counts[key] || 0) + 1;
+                data.push({ x: key, y: counts[key] });
+                if (counts[key] > maxCount) maxCount = counts[key];
+            }
+            return {
+                label: name,
+                data: data,
+                borderColor: colors[idx % colors.length],
+                backgroundColor: colors[idx % colors.length],
+                pointRadius: 5,
+                showLine: false
+            };
         });
+        return { datasets, maxCount };
+    }
+
+    function updateChart() {
+        const range = document.getElementById('rangeFilter').value;
+        const sortBy = document.getElementById('sortBy').value;
+        const result = buildDatasets(sortBy, range);
+        chart.data.datasets = result.datasets;
+        chart.options.scales.y.max = result.maxCount + 1;
         chart.update();
     }
 
     document.getElementById('rangeFilter').addEventListener('change', function () {
         document.getElementById('customRangeInputs').style.display = this.value === 'custom' ? 'block' : 'none';
-        filterByRange(this.value);
+        updateChart();
     });
-    document.getElementById('fromDate').addEventListener('change', () => filterByRange('custom'));
-    document.getElementById('toDate').addEventListener('change', () => filterByRange('custom'));
+    document.getElementById('sortBy').addEventListener('change', updateChart);
+    document.getElementById('fromDate').addEventListener('change', updateChart);
+    document.getElementById('toDate').addEventListener('change', updateChart);
+
+    updateChart();
 });
 </script>
 {% endblock %}
