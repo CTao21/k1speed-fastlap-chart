@@ -433,9 +433,12 @@ def results():
             continue
         best    = min(t.sessions, key=lambda s: s.best_lap)
         first   = min(t.sessions, key=lambda s: s.date)
+        image_file = track_image_filename(t.raw_name)
+        image_path = os.path.join(app.root_path, 'static', 'img', 'tracks', image_file)
         tracks_data[t.display_name] = {
             'raw_name'   : t.raw_name,
-            'image_file' : track_image_filename(t.raw_name),
+            'image_file' : image_file,
+            'has_image'  : os.path.exists(image_path),
             'sessions'   : len(t.sessions),
             'first_date' : first.date.strftime('%Y-%m-%d'),
             'best_lap'   : f"{best.best_lap:.3f}",
