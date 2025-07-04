@@ -31,7 +31,13 @@
       {% for track_name, data in tracks %}
       <div class="col-md-6 mb-4">
         <div class="card h-100 track-card">
+          {% if data.has_image %}
           <img src="{{ url_for('static', filename='img/tracks/' ~ data.image_file) }}" class="track-card-img card-img-top" alt="{{ track_name }}">
+          {% else %}
+          <div class="track-card-placeholder card-img-top">
+            🚧 Coming Soon 🚧
+          </div>
+          {% endif %}
           <div class="card-body d-flex flex-column">
           <h5 class="card-title">{{ track_name }}</h5>
           <p class="card-text mb-1 d-flex justify-content-between">
