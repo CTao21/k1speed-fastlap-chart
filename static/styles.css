@@ -172,18 +172,11 @@ body {
     animation: spin 0.75s linear infinite;
 }
 /* Fix chart height */
-#progressChart {
-    display: block;
-    width: 100%;
-    height: 300px !important;
-    margin-bottom: 1rem;
-}
-
-/* Race detail chart */
+#progressChart,
 #lapChart {
     display: block;
     width: 100%;
-    height: 300px !important;
+    height: 100% !important;
     margin-bottom: 1rem;
 }
 
