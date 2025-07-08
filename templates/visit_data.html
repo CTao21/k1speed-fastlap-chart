@@ -3,22 +3,50 @@
 {% block content %}
 <div class="container mt-4">
   <div class="row gx-1 gy-1">
-    <div class="col-md-4">
-      <div class="main-card text-center chart-card h-100">
+    <div class="col-12">
+      <div class="main-card chart-card h-100">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h2>Visit Data</h2>
           <a href="{{ url_for('results') }}" class="btn btn-primary">Back to Results</a>
         </div>
         <h5 class="mb-1">{{ username }}</h5>
-        <p class="mb-1">Total Races: <strong>{{ total_races }}</strong></p>
+        <p class="mb-1">Total Races: <strong id="totalRaces">{{ total_races }}</strong></p>
         {% if racer_since %}<p class="mb-1">Racer Since: {{ racer_since }}</p>{% endif %}
-        {% if favourite_track %}<p class="mb-1">Favourite Location: {{ favourite_track }}</p>{% endif %}
-        {% if favourite_day %}<p class="mb-0">Favourite Day: {{ favourite_day }}</p>{% endif %}
-        <p class="text-dark mb-0 mt-2"><em>⚠️ This page is a work in progress ⚠️</em></p>
+        {% if favourite_track %}<p class="mb-1">Favourite Location: <span id="favLocation">{{ favourite_track }}</span></p>{% endif %}
+        {% if favourite_day %}<p class="mb-0">Favourite Day: <span id="favDay">{{ favourite_day }}</span></p>{% endif %}
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2 mt-3">
+          <label for="rangeFilter" class="form-label me-2">Time Range:</label>
+          <select id="rangeFilter" class="form-select form-select-sm d-inline w-auto">
+            <option value="all" selected>All Time</option>
+            <option value="this_week">This Week</option>
+            <option value="this_month">This Month</option>
+            <option value="this_year">This Year</option>
+          </select>
+          <label for="sortBy" class="form-label ms-2 me-2">Sort By:</label>
+          <select id="sortBy" class="form-select form-select-sm d-inline w-auto">
+            <option value="day">Day</option>
+            <option value="week">Week</option>
+            <option value="month" selected>Month</option>
+            <option value="year">Year</option>
+          </select>
+          <label for="trackSelect" class="form-label ms-2 me-2">Track:</label>
+          <select id="trackSelect" class="form-select form-select-sm d-inline w-auto">
+            <option value="all" selected>All Tracks</option>
+            {% for name, count in track_options %}
+            <option value="{{ name }}">{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+          <label for="fromDate" class="form-label me-1">From:</label>
+          <input type="date" id="fromDate" class="form-control form-control-sm d-inline w-auto me-2">
+          <label for="toDate" class="form-label me-1">To:</label>
+          <input type="date" id="toDate" class="form-control form-control-sm d-inline w-auto me-2">
+          <button id="applyManualDate" class="btn btn-outline-secondary btn-sm">Apply</button>
+          <button id="clearManualDate" class="btn btn-outline-secondary btn-sm">Clear</button>
+        </div>
       </div>
     </div>
-    <div class="col-md-8 mt-2 mt-md-0">
-      <div class="main-card chart-card h-100">
         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
           <label for="rangeFilter" class="form-label me-2">Time Range:</label>
           <select id="rangeFilter" class="form-select form-select-sm d-inline w-auto">
@@ -53,7 +81,7 @@
       </div>
     </div>
   <div class="chart-grid mt-2">
-    <div class="col-lg-6">
+    <div>
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Sessions Over Time</h5>
         <div class="chart-container-ios">
@@ -61,7 +89,7 @@
         </div>
       </div>
     </div>
-    <div class="col-lg-6">
+    <div>
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Sessions by Track</h5>
         <div class="chart-container-ios">
@@ -69,7 +97,7 @@
         </div>
       </div>
     </div>
-    <div class="col-lg-6">
+    <div>
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Cumulative Sessions</h5>
         <div class="chart-container-ios">
@@ -77,7 +105,7 @@
         </div>
       </div>
     </div>
-    <div class="col-lg-6">
+    <div>
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Visits by Day of Week</h5>
         <div class="chart-container-ios">
@@ -85,7 +113,7 @@
         </div>
       </div>
     </div>
-    <div class="col-lg-12">
+    <div>
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Visits by Hour</h5>
         <div class="chart-container-ios">
@@ -116,8 +144,8 @@
 
 .chart-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    grid-auto-rows: 350px;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    grid-auto-rows: 400px;
     gap: 0.5rem;
     align-items: stretch;
 }
@@ -125,6 +153,8 @@
 .chart-grid .chart-card {
     display: flex;
     flex-direction: column;
+    min-width: 400px;
+    min-height: 400px;
 }
 
 .chart-title {
@@ -425,7 +455,17 @@ document.addEventListener("DOMContentLoaded", function () {
             dow[idx] += 1;
         });
 
-        return { labels, datasets, counts, cumulative, dow, hourlyCounts };
+        const favouriteTrack = trackNames.reduce((best, n) =>
+            trackTotals[n] > (trackTotals[best] || 0) ? n : best, trackNames[0] || null);
+
+        const dowNames = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+        let favouriteDay = null;
+        let maxDow = 0;
+        dow.forEach((v, i) => { if (v > maxDow) { maxDow = v; favouriteDay = dowNames[i]; }});
+
+        return { labels, datasets, counts, cumulative, dow, hourlyCounts,
+                 totalVisits: sessions.length,
+                 favouriteTrack, favouriteDay };
     }
 
     function updateTrackSelection() {
@@ -453,9 +493,17 @@ document.addEventListener("DOMContentLoaded", function () {
         
         dowChart.data.datasets[0].data = result.dow;
         dowChart.update();
-        
+
         hourlyChart.data.datasets[0].data = result.hourlyCounts;
         hourlyChart.update();
+
+        document.getElementById('totalRaces').textContent = result.totalVisits;
+        if (result.favouriteTrack) {
+            document.getElementById('favLocation').textContent = result.favouriteTrack;
+        }
+        if (result.favouriteDay) {
+            document.getElementById('favDay').textContent = result.favouriteDay;
+        }
     }
 
     document.getElementById('rangeFilter').addEventListener('change', updateChart);
