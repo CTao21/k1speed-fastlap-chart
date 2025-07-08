@@ -4,15 +4,23 @@
 <div class="container mt-4">
   <div class="row gx-1 gy-1">
     <div class="col-12">
-      <div class="main-card chart-card h-100">
+      <div class="main-card chart-card h-100" style="min-height:auto;">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h2>Visit Data</h2>
-          <a href="{{ url_for('results') }}" class="btn btn-primary">Back to Results</a>
+          <div class="d-flex gap-2">
+            <select id="trackSelect" class="form-select form-select-sm w-auto">
+              <option value="all" selected>All Tracks</option>
+              {% for name, count in track_options %}
+              <option value="{{ name }}">{{ name }}</option>
+              {% endfor %}
+            </select>
+            <a href="{{ url_for('results') }}" class="btn btn-primary">Back to Results</a>
+          </div>
         </div>
         <h5 class="mb-1">{{ username }}</h5>
         <p class="mb-1">Total Races: <strong id="totalRaces">{{ total_races }}</strong></p>
         {% if racer_since %}<p class="mb-1">Racer Since: <span id="racerSince">{{ racer_since }}</span></p>{% endif %}
-        {% if favourite_track %}<p class="mb-1">Favourite Location: <span id="favLocation">{{ favourite_track }}</span></p>{% endif %}
+        {% if favourite_track %}<p class="mb-1" id="favLocationContainer">Favourite Location: <span id="favLocation">{{ favourite_track }}</span></p>{% endif %}
         {% if favourite_day %}<p class="mb-0">Favourite Day: <span id="favDay">{{ favourite_day }}</span></p>{% endif %}
         <div class="d-flex flex-wrap align-items-center gap-2 mb-2 mt-3">
           <label for="rangeFilter" class="form-label me-2">Time Range:</label>
@@ -29,13 +37,6 @@
             <option value="month" selected>Month</option>
             <option value="year">Year</option>
           </select>
-          <label for="trackSelect" class="form-label ms-2 me-2">Track:</label>
-          <select id="trackSelect" class="form-select form-select-sm d-inline w-auto">
-            <option value="all" selected>All Tracks</option>
-            {% for name, count in track_options %}
-            <option value="{{ name }}">{{ name }}</option>
-            {% endfor %}
-          </select>
         </div>
         <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
           <label for="fromDate" class="form-label me-1">From:</label>
@@ -48,7 +49,7 @@
       </div>
     </div>
   <div class="chart-grid mt-2">
-    <div id="pieChartCard">
+    <div>
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Sessions Over Time</h5>
         <div class="chart-container-ios">
@@ -56,7 +57,7 @@
         </div>
       </div>
     </div>
-    <div>
+    <div id="pieChartCard">
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Sessions by Track</h5>
         <div class="chart-container-ios">
@@ -111,7 +112,7 @@
 
 .chart-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
     gap: 0.5rem;
     align-items: stretch;
 }
@@ -119,7 +120,7 @@
 .chart-grid .chart-card {
     display: flex;
     flex-direction: column;
-    min-height: 300px;
+    min-height: 450px;
 }
 
 .chart-title {
@@ -145,6 +146,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const hourlyCtx = document.getElementById('hourlyChart');
     const trackSelect = document.getElementById('trackSelect');
     const pieCard = document.getElementById('pieChartCard');
+    const favLocationContainer = document.getElementById('favLocationContainer');
 
     
     const chart = new Chart(ctx, {
@@ -456,8 +458,10 @@ document.addEventListener("DOMContentLoaded", function () {
             pieChart.data.labels = trackNames;
             pieChart.data.datasets[0].data = result.counts;
             pieChart.update();
+            if (favLocationContainer) favLocationContainer.style.display = '';
         } else {
             pieCard.style.display = 'none';
+            if (favLocationContainer) favLocationContainer.style.display = 'none';
         }
         
         cumChart.data.labels = result.labels;
