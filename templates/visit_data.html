@@ -2,22 +2,26 @@
 
 {% block content %}
 <div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Visit Data</h2>
-    <a href="{{ url_for('results') }}" class="btn btn-primary">Back to Results</a>
-  </div>
-  <div class="mb-3">
-    <h5 class="mb-1">{{ username }}</h5>
-    <p class="mb-1">Total Races: <strong>{{ total_races }}</strong></p>
-    {% if racer_since %}<p class="mb-1">Racer Since: {{ racer_since }}</p>{% endif %}
-    {% if favourite_track %}<p class="mb-1">Favourite Location: {{ favourite_track }}</p>{% endif %}
-    {% if favourite_day %}<p class="mb-0">Favourite Day: {{ favourite_day }}</p>{% endif %}
-  </div>
-  <p class="text-dark mb-2"><em>⚠️ This page is a work in progress ⚠️</em></p>
-
-  <div class="row g-3">
+  <div class="row gx-1 gy-1">
     <div class="col-12">
-      <div class="main-card">
+      <div class="main-card text-center chart-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2>Visit Data</h2>
+          <a href="{{ url_for('results') }}" class="btn btn-primary">Back to Results</a>
+        </div>
+        <h5 class="mb-1">{{ username }}</h5>
+        <p class="mb-1">Total Races: <strong>{{ total_races }}</strong></p>
+        {% if racer_since %}<p class="mb-1">Racer Since: {{ racer_since }}</p>{% endif %}
+        {% if favourite_track %}<p class="mb-1">Favourite Location: {{ favourite_track }}</p>{% endif %}
+        {% if favourite_day %}<p class="mb-0">Favourite Day: {{ favourite_day }}</p>{% endif %}
+        <p class="text-dark mb-0 mt-2"><em>⚠️ This page is a work in progress ⚠️</em></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="row gx-1 gy-1 mt-2">
+    <div class="col-12">
+        <div class="main-card chart-card">
         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
           <label for="rangeFilter" class="form-label me-2">Time Range:</label>
           <select id="rangeFilter" class="form-select form-select-sm d-inline w-auto">
@@ -45,35 +49,35 @@
       </div>
     </div>
     <div class="col-lg-6">
-      <div class="main-card">
+      <div class="main-card chart-card">
         <div class="chart-container-ios">
           <canvas id="visitChart" style="touch-action:none; width:100%; height:400px;"></canvas>
         </div>
       </div>
     </div>
     <div class="col-lg-6">
-      <div class="main-card">
+      <div class="main-card chart-card">
         <div class="chart-container-ios">
-          <canvas id="pieChart" style="touch-action:none; width:100%; height:400px;"></canvas>
+          <canvas id="pieChart" style="touch-action:none; width:100%; height:300px;"></canvas>
         </div>
       </div>
     </div>
     <div class="col-lg-6">
-      <div class="main-card">
+      <div class="main-card chart-card">
         <div class="chart-container-ios">
           <canvas id="cumulativeChart" style="touch-action:none; width:100%; height:400px;"></canvas>
         </div>
       </div>
     </div>
     <div class="col-lg-6">
-      <div class="main-card">
+      <div class="main-card chart-card">
         <div class="chart-container-ios">
           <canvas id="dowChart" style="touch-action:none; width:100%; height:400px;"></canvas>
         </div>
       </div>
     </div>
     <div class="col-lg-12">
-      <div class="main-card">
+      <div class="main-card chart-card">
         <div class="chart-container-ios">
           <canvas id="hourlyChart" style="touch-action:none; width:100%; height:400px;"></canvas>
         </div>
@@ -108,6 +112,31 @@ document.addEventListener("DOMContentLoaded", function () {
     const cumCtx = document.getElementById('cumulativeChart');
     const dowCtx = document.getElementById('dowChart');
     const hourlyCtx = document.getElementById('hourlyChart');
+
+    const pieLabelPlugin = {
+        id: 'pieLabelPlugin',
+        afterDraw(chart, args, opts) {
+            const { ctx } = chart;
+            const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+            chart.getDatasetMeta(0).data.forEach((arc, i) => {
+                const angle = (arc.startAngle + arc.endAngle) / 2;
+                const r = arc.outerRadius + (opts.offset || 20);
+                const x = arc.x + Math.cos(angle) * r;
+                const y = arc.y + Math.sin(angle) * r;
+                const value = chart.data.datasets[0].data[i];
+                const label = chart.data.labels[i];
+                const percent = Math.round((value / total) * 100) + '%';
+                ctx.save();
+                ctx.fillStyle = opts.color || '#000';
+                ctx.font = '12px Roboto';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(label + ' ' + percent, x, y);
+                ctx.restore();
+            });
+        }
+    };
+    Chart.register(pieLabelPlugin);
     
     const chart = new Chart(ctx, {
         type: 'bar',
@@ -150,12 +179,7 @@ document.addEventListener("DOMContentLoaded", function () {
             responsive: true,
             plugins: {
                 legend: { display: false },
-                outlabels: {
-                    text: '%l %p',
-                    color: '#000',
-                    stretch: 15,
-                    font: { resizable: true, minSize: 12, maxSize: 18 }
-                },
+                pieLabelPlugin: { offset: 30, color: '#000' },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -204,14 +228,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 tooltip: {
                     mode: 'index',
                     intersect: false
-                },
-                zoom: {
-                    pan: { enabled: true, mode: 'x' },
-                    zoom: {
-                        wheel: { enabled: true },
-                        pinch: { enabled: true },
-                        mode: 'x'
-                    }
                 }
             }
         }
