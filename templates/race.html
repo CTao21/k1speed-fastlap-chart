@@ -25,6 +25,10 @@
       <canvas id="lapChart" style="touch-action:none; width:100%; height:400px;"></canvas>
     </div>
     <button id="toggleOutliers" class="btn btn-warning btn-sm mb-1">Filter Outliers</button>
+    <div class="input-group input-group-sm mb-1 mt-1" style="max-width: 200px;">
+      <input type="number" step="0.001" id="manualMax" class="form-control" placeholder="Max lap (s)">
+      <button id="applyManualMax" class="btn btn-outline-secondary">Apply</button>
+    </div>
     <div id="outlierInfo" class="text-muted small mb-3"></div>
   </div>
 </div>
@@ -46,6 +50,7 @@
 
   const outlierFlags = calcOutliers(lapTimes);
   let hideOutliers = false;
+  let manualMax = null;
 
   const chart = new Chart(ctx, {
     type: 'line',
@@ -108,10 +113,12 @@
     const vals = [];
     const removed = [];
     for (let i = 0; i < lapTimes.length; i++) {
-      if (!hideOutliers || !outlierFlags[i]) {
+      const isOutlier = outlierFlags[i];
+      const withinMax = manualMax === null || lapTimes[i] <= manualMax;
+      if ((!hideOutliers || !isOutlier) && withinMax) {
         labels.push(`Lap ${i + 1}`);
         vals.push(lapTimes[i]);
-      } else {
+      } else if (hideOutliers && isOutlier) {
         removed.push(`Lap ${i + 1}: ${lapTimes[i].toFixed(3)}s`);
       }
     }
@@ -132,6 +139,15 @@
     btn.textContent = hideOutliers ? 'Show Outliers' : 'Filter Outliers';
     updateChart();
   });
+
+  const applyBtn = document.getElementById('applyManualMax');
+  if (applyBtn) {
+    applyBtn.addEventListener('click', () => {
+      const val = parseFloat(document.getElementById('manualMax').value);
+      if (!isNaN(val)) manualMax = val; else manualMax = null;
+      updateChart();
+    });
+  }
 
   updateChart();
   });
