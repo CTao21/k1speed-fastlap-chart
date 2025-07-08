@@ -500,10 +500,12 @@ def visit_data():
             all_sessions.extend(t.sessions)
 
     visit_data = {}
+    track_counts = {}
     for t in user.tracks:
         dates = [s.date.strftime('%Y-%m-%dT%H:%M:%S') for s in sorted(t.sessions, key=lambda s: s.date)]
         if dates:
             visit_data[t.display_name] = dates
+            track_counts[t.display_name] = len(dates)
 
     racer_since = None
     fav_day = None
@@ -517,9 +519,12 @@ def visit_data():
 
     total_races = len(all_sessions)
 
+    track_options = sorted(track_counts.items(), key=lambda x: x[1], reverse=True)
+
     return render_template('visit_data.html',
                            favourite_track=favourite_track,
                            visit_data=visit_data,
+                           track_options=track_options,
                            username=user.username,
                            total_races=total_races,
                            racer_since=racer_since,
