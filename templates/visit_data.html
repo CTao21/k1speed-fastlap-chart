@@ -34,6 +34,13 @@
             <option value="month" selected>Month</option>
             <option value="year">Year</option>
           </select>
+          <label for="trackSelect" class="form-label ms-2 me-2">Track:</label>
+          <select id="trackSelect" class="form-select form-select-sm d-inline w-auto">
+            <option value="all" selected>All Tracks</option>
+            {% for name, count in track_options %}
+            <option value="{{ name }}">{{ name }} ({{ count }})</option>
+            {% endfor %}
+          </select>
         </div>
         <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
           <label for="fromDate" class="form-label me-1">From:</label>
@@ -129,7 +136,8 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const trackData = {{ visit_data | tojson }};
-    const trackNames = Object.keys(trackData);
+    const allTrackNames = Object.keys(trackData);
+    let trackNames = allTrackNames.slice();
     const colors = ['#ff7665','#3498db','#2ecc71','#9b59b6','#f1c40f','#e67e22','#1abc9c','#34495e'];
 
     let manualFrom = null;
@@ -140,6 +148,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const cumCtx = document.getElementById('cumulativeChart');
     const dowCtx = document.getElementById('dowChart');
     const hourlyCtx = document.getElementById('hourlyChart');
+    const trackSelect = document.getElementById('trackSelect');
 
     
     const chart = new Chart(ctx, {
@@ -147,7 +156,8 @@ document.addEventListener("DOMContentLoaded", function () {
         data: { labels: [], datasets: [] },
         options: {
             responsive: true,
-            plugins: { 
+            maintainAspectRatio: false,
+            plugins: {
                 legend: { 
                     display: true,
                     position: 'bottom',
@@ -181,6 +191,7 @@ document.addEventListener("DOMContentLoaded", function () {
         data: { labels: [], datasets: [{ data: [], backgroundColor: colors, borderColor: '#000', borderWidth: 1 }] },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: { display: true, position: 'bottom' },
                 tooltip: {
@@ -218,6 +229,7 @@ document.addEventListener("DOMContentLoaded", function () {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 y: { beginAtZero: true },
                 x: {
@@ -250,9 +262,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             ] 
         },
-        options: { 
-            responsive: true, 
-            plugins: { 
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
                 legend: { display: false } 
             }, 
             scales: { 
@@ -286,6 +299,7 @@ document.addEventListener("DOMContentLoaded", function () {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: {
                     display: false
@@ -414,9 +428,15 @@ document.addEventListener("DOMContentLoaded", function () {
         return { labels, datasets, counts, cumulative, dow, hourlyCounts };
     }
 
+    function updateTrackSelection() {
+        const selected = trackSelect.value;
+        trackNames = selected === 'all' ? allTrackNames.slice() : [selected];
+    }
+
     function updateChart() {
         const range = document.getElementById('rangeFilter').value;
         const sortBy = document.getElementById('sortBy').value;
+        updateTrackSelection();
         const result = buildDatasets(sortBy, range);
         
         chart.data.labels = result.labels;
@@ -440,6 +460,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.getElementById('rangeFilter').addEventListener('change', updateChart);
     document.getElementById('sortBy').addEventListener('change', updateChart);
+    trackSelect.addEventListener('change', updateChart);
     document.getElementById('applyManualDate').addEventListener('click', () => {
         const f = document.getElementById('fromDate').value;
         const t = document.getElementById('toDate').value;
@@ -454,6 +475,7 @@ document.addEventListener("DOMContentLoaded", function () {
         updateChart();
     });
 
+    updateTrackSelection();
     updateChart();
 });
 </script>
