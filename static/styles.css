@@ -20,6 +20,10 @@ body {
     overflow: hidden; /* clip background inside rounded corners */
 }
 
+.wide-card {
+    max-width: 1200px;
+}
+
 /* This creates the blended background */
 .auth-card::before,
 .main-card::before {

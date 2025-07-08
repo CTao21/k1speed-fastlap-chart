@@ -428,6 +428,7 @@ def results():
         return redirect(url_for('imap_login'))
 
     tracks_data = {}
+    all_sessions = []
     for t in user.tracks:
         if not t.sessions:
             continue
@@ -444,6 +445,7 @@ def results():
             'best_lap'   : f"{best.best_lap:.3f}",
             'best_date'  : best.date.strftime('%Y-%m-%d')
         }
+        all_sessions.extend(t.sessions)
 
     sorted_tracks = sorted(
         tracks_data.items(),
@@ -451,13 +453,33 @@ def results():
         reverse=True
     )
 
-    total_races = sum(len(t.sessions) for t in user.tracks)
+    total_races = len(all_sessions)
+
+    racer_since = None
+    if all_sessions:
+        racer_since = min(all_sessions, key=lambda s: s.date).date.strftime('%Y-%m-%d')
+
+    favourite_track = None
+    if sorted_tracks:
+        favourite_track = sorted_tracks[0][0]
+
+    # favourite day of week
+    fav_day = None
+    if all_sessions:
+        dow_counts = [0]*7
+        for s in all_sessions:
+            dow_counts[s.date.weekday()] += 1
+        import calendar
+        fav_day = calendar.day_name[dow_counts.index(max(dow_counts))]
 
     return render_template(
         'results.html',
         username=user.username,
         tracks=sorted_tracks,
-        total_races=total_races
+        total_races=total_races,
+        racer_since=racer_since,
+        favourite_track=favourite_track,
+        favourite_day=fav_day
     )
 
 
@@ -471,19 +493,37 @@ def visit_data():
         return redirect(url_for('imap_login'))
 
     favourite_track = None
+    all_sessions = []
     if user.tracks:
         favourite_track = max(user.tracks, key=lambda t: len(t.sessions)).display_name
+        for t in user.tracks:
+            all_sessions.extend(t.sessions)
 
     visit_data = {}
     for t in user.tracks:
-        dates = [s.date.strftime('%Y-%m-%d') for s in sorted(t.sessions, key=lambda s: s.date)]
+        dates = [s.date.strftime('%Y-%m-%dT%H:%M:%S') for s in sorted(t.sessions, key=lambda s: s.date)]
         if dates:
             visit_data[t.display_name] = dates
+
+    racer_since = None
+    fav_day = None
+    if all_sessions:
+        racer_since = min(all_sessions, key=lambda s: s.date).date.strftime('%Y-%m-%d')
+        import calendar
+        dow_counts = [0]*7
+        for s in all_sessions:
+            dow_counts[s.date.weekday()] += 1
+        fav_day = calendar.day_name[dow_counts.index(max(dow_counts))]
+
+    total_races = len(all_sessions)
 
     return render_template('visit_data.html',
                            favourite_track=favourite_track,
                            visit_data=visit_data,
-                           username=user.username)
+                           username=user.username,
+                           total_races=total_races,
+                           racer_since=racer_since,
+                           favourite_day=fav_day)
 
 
 @app.route('/track/<track_name>')

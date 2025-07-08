@@ -4,9 +4,15 @@
 <div class="container mt-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Visit Data</h2>
-    <a href="{{ url_for('results') }}" class="btn btn-outline-secondary">Back to Results</a>
+    <a href="{{ url_for('results') }}" class="btn btn-primary">Back to Results</a>
   </div>
-  <p><strong>Favourite Track:</strong> {{ favourite_track }}</p>
+  <div class="mb-3">
+    <h5 class="mb-1">{{ username }}</h5>
+    <p class="mb-1">Total Races: <strong>{{ total_races }}</strong></p>
+    {% if racer_since %}<p class="mb-1">Racer Since: {{ racer_since }}</p>{% endif %}
+    {% if favourite_track %}<p class="mb-1">Favourite Location: {{ favourite_track }}</p>{% endif %}
+    {% if favourite_day %}<p class="mb-0">Favourite Day: {{ favourite_day }}</p>{% endif %}
+  </div>
   <p class="text-dark mb-2"><em>⚠️ This page is a work in progress ⚠️</em></p>
 
   <div class="row g-3">
@@ -143,28 +149,12 @@ document.addEventListener("DOMContentLoaded", function () {
         options: {
             responsive: true,
             plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {
-                        generateLabels(chart) {
-                            const counts = chart.data.datasets[0].data;
-                            const total = counts.reduce((a,b) => a+b, 0) || 1;
-                            return chart.data.labels.map((label,i) => {
-                                const value = counts[i] || 0;
-                                const pct = ((value/total)*100).toFixed(1);
-                                return {
-                                    text: `${label}: ${pct}% (${value})`,
-                                    fillStyle: colors[i % colors.length],
-                                    strokeStyle: '#000',
-                                    lineWidth: 1,
-                                    hidden: false,
-                                    index: i
-                                };
-                            });
-                        },
-                        boxWidth: 20,
-                        padding: 15
-                    }
+                legend: { display: false },
+                outlabels: {
+                    text: '%l %p',
+                    color: '#000',
+                    stretch: 15,
+                    font: { resizable: true, minSize: 12, maxSize: 18 }
                 },
                 tooltip: {
                     callbacks: {
@@ -199,9 +189,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             ] 
         },
-        options: { 
-            responsive: true, 
-            scales: { 
+        options: {
+            responsive: true,
+            scales: {
                 y: { beginAtZero: true },
                 x: {
                     title: {
@@ -214,6 +204,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 tooltip: {
                     mode: 'index',
                     intersect: false
+                },
+                zoom: {
+                    pan: { enabled: true, mode: 'x' },
+                    zoom: {
+                        wheel: { enabled: true },
+                        pinch: { enabled: true },
+                        mode: 'x'
+                    }
                 }
             }
         }

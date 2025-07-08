@@ -6,20 +6,19 @@
   <!-- Profile header + action buttons (without picture) -->
   <div class="main-card mb-4 p-4">
     <div>
-      <h3 class="mb-1">{{ username }}</h3>
-      <p class="mb-1"><strong>Total Races:</strong>
-        {{ total_races }}</p>
+      <h3 class="mb-2">{{ username }}</h3>
+      <p class="mb-1">Total Races: <strong>{{ total_races }}</strong></p>
+      {% if racer_since %}<p class="mb-1">Racer Since: {{ racer_since }}</p>{% endif %}
+      {% if favourite_track %}<p class="mb-1">Favourite Location: {{ favourite_track }}</p>{% endif %}
+      {% if favourite_day %}<p class="mb-3">Favourite Day: {{ favourite_day }}</p>{% endif %}
       <div class="mt-2">
-        <a href="{{ url_for('profile_setup') }}"
-           class="btn btn-sm btn-outline-secondary me-2">
+        <a href="{{ url_for('profile_setup') }}" class="btn btn-sm btn-outline-secondary me-2">
           Edit Profile
         </a>
-        <a href="{{ url_for('visit_data') }}"
-           class="btn btn-sm btn-outline-secondary me-2">
+        <a href="{{ url_for('visit_data') }}" class="btn btn-sm btn-primary me-2">
           Visit Data
         </a>
-        <a href="{{ url_for('import_loading') }}"
-           class="btn btn-sm btn-primary">
+        <a href="{{ url_for('import_loading') }}" class="btn btn-sm btn-success">
           Import New Races
         </a>
         <div class="alert alert-warning p-1 mt-2 mb-0" role="alert">
