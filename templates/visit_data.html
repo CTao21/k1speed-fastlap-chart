@@ -16,17 +16,17 @@
           <label for="rangeFilter" class="form-label me-2">Time Range:</label>
           <select id="rangeFilter" class="form-select form-select-sm d-inline w-auto">
             <option value="all" selected>All Time</option>
-        <option value="this_week">This Week</option>
-        <option value="this_month">This Month</option>
-        <option value="this_year">This Year</option>
-      </select>
-      <label for="sortBy" class="form-label ms-2 me-2">Sort By:</label>
-      <select id="sortBy" class="form-select form-select-sm d-inline w-auto">
-        <option value="day">Day</option>
-        <option value="week">Week</option>
-        <option value="month" selected>Month</option>
-        <option value="year">Year</option>
-      </select>
+            <option value="this_week">This Week</option>
+            <option value="this_month">This Month</option>
+            <option value="this_year">This Year</option>
+          </select>
+          <label for="sortBy" class="form-label ms-2 me-2">Sort By:</label>
+          <select id="sortBy" class="form-select form-select-sm d-inline w-auto">
+            <option value="day">Day</option>
+            <option value="week">Week</option>
+            <option value="month" selected>Month</option>
+            <option value="year">Year</option>
+          </select>
         </div>
         <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
           <label for="fromDate" class="form-label me-1">From:</label>
@@ -35,7 +35,6 @@
           <input type="date" id="toDate" class="form-control form-control-sm d-inline w-auto me-2">
           <button id="applyManualDate" class="btn btn-outline-secondary btn-sm">Apply</button>
           <button id="clearManualDate" class="btn btn-outline-secondary btn-sm">Clear</button>
-        </div>
         </div>
       </div>
     </div>
@@ -67,6 +66,13 @@
         </div>
       </div>
     </div>
+    <div class="col-lg-12">
+      <div class="main-card">
+        <div class="chart-container-ios">
+          <canvas id="hourlyChart" style="touch-action:none; width:100%; height:400px;"></canvas>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -95,18 +101,42 @@ document.addEventListener("DOMContentLoaded", function () {
     const pieCtx = document.getElementById('pieChart');
     const cumCtx = document.getElementById('cumulativeChart');
     const dowCtx = document.getElementById('dowChart');
+    const hourlyCtx = document.getElementById('hourlyChart');
+    
     const chart = new Chart(ctx, {
         type: 'bar',
         data: { labels: [], datasets: [] },
         options: {
             responsive: true,
-            plugins: { legend: { display: true } },
+            plugins: { 
+                legend: { 
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 20,
+                        padding: 20
+                    }
+                } 
+            },
             scales: {
-                x: { stacked: true, title: { display: true, text: 'Date' } },
-                y: { beginAtZero: true, stacked: true, ticks: { stepSize: 1 }, title: { display: true, text: 'Sessions' } }
+                x: { 
+                    stacked: true, 
+                    title: { display: true, text: 'Date' } 
+                },
+                y: { 
+                    beginAtZero: true, 
+                    stacked: true, 
+                    ticks: { stepSize: 1 }, 
+                    title: { display: true, text: 'Sessions' } 
+                }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutQuad'
             }
         }
     });
+    
     const pieChart = new Chart(pieCtx, {
         type: 'pie',
         data: { labels: [], datasets: [{ data: [], backgroundColor: colors, borderColor: '#000', borderWidth: 1 }] },
@@ -114,7 +144,7 @@ document.addEventListener("DOMContentLoaded", function () {
             responsive: true,
             plugins: {
                 legend: {
-                    position: 'bottom',
+                    position: 'right',
                     labels: {
                         generateLabels(chart) {
                             const counts = chart.data.datasets[0].data;
@@ -131,21 +161,138 @@ document.addEventListener("DOMContentLoaded", function () {
                                     index: i
                                 };
                             });
+                        },
+                        boxWidth: 20,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ${value} (${percentage}%)`;
                         }
                     }
                 }
             }
         }
     });
+    
     const cumChart = new Chart(cumCtx, {
         type: 'line',
-        data: { labels: [], datasets: [{ label: 'Total Sessions', data: [], borderColor: '#e67e22', fill: false }] },
-        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        data: { 
+            labels: [], 
+            datasets: [
+                {
+                    label: 'Total Sessions', 
+                    data: [], 
+                    borderColor: '#e67e22',
+                    backgroundColor: 'rgba(230, 126, 34, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }
+            ] 
+        },
+        options: { 
+            responsive: true, 
+            scales: { 
+                y: { beginAtZero: true },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            }
+        }
     });
+    
     const dowChart = new Chart(dowCtx, {
         type: 'bar',
-        data: { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], datasets: [{ label: 'Visits', data: [], backgroundColor: '#3498db' }] },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        data: { 
+            labels: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'], 
+            datasets: [
+                {
+                    label: 'Visits', 
+                    data: [], 
+                    backgroundColor: '#3498db',
+                    borderColor: '#2980b9',
+                    borderWidth: 1
+                }
+            ] 
+        },
+        options: { 
+            responsive: true, 
+            plugins: { 
+                legend: { display: false } 
+            }, 
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    ticks: { stepSize: 1 } 
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Day of Week'
+                    }
+                }
+            } 
+        }
+    });
+    
+    const hourlyChart = new Chart(hourlyCtx, {
+        type: 'bar',
+        data: {
+            labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+            datasets: [
+                {
+                    label: 'Visits by Hour',
+                    data: Array(24).fill(0),
+                    backgroundColor: '#9b59b6',
+                    borderColor: '#8e44ad',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    },
+                    title: {
+                        display: true,
+                        text: 'Visits'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Hour of Day'
+                    }
+                }
+            }
+        }
     });
 
     function getRange(range) {
@@ -174,12 +321,18 @@ document.addEventListener("DOMContentLoaded", function () {
         const countsPerKeyPerTrack = {};
         trackNames.forEach(n => { trackTotals[n] = 0; countsPerKeyPerTrack[n] = {}; });
         const sessions = [];
+        const hourlyCounts = Array(24).fill(0);
 
         trackNames.forEach(name => {
             trackData[name].forEach(d => {
                 const dt = new Date(d);
                 if (fromDate && dt < fromDate) return;
                 if (toDate && dt > toDate) return;
+                
+                // Count for hourly chart
+                const hour = dt.getHours();
+                hourlyCounts[hour]++;
+                
                 let key = d;
                 if (sortBy === 'month') key = d.slice(0,7);
                 else if (sortBy === 'year') key = d.slice(0,4);
@@ -239,24 +392,31 @@ document.addEventListener("DOMContentLoaded", function () {
             dow[idx] += 1;
         });
 
-        return { labels, datasets, counts, cumulative, dow };
+        return { labels, datasets, counts, cumulative, dow, hourlyCounts };
     }
 
     function updateChart() {
         const range = document.getElementById('rangeFilter').value;
         const sortBy = document.getElementById('sortBy').value;
         const result = buildDatasets(sortBy, range);
+        
         chart.data.labels = result.labels;
         chart.data.datasets = result.datasets;
         chart.update();
+        
         pieChart.data.labels = trackNames;
         pieChart.data.datasets[0].data = result.counts;
         pieChart.update();
+        
         cumChart.data.labels = result.labels;
         cumChart.data.datasets[0].data = result.cumulative;
         cumChart.update();
+        
         dowChart.data.datasets[0].data = result.dow;
         dowChart.update();
+        
+        hourlyChart.data.datasets[0].data = result.hourlyCounts;
+        hourlyChart.update();
     }
 
     document.getElementById('rangeFilter').addEventListener('change', updateChart);
