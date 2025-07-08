@@ -50,7 +50,7 @@
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Sessions Over Time</h5>
         <div class="chart-container-ios">
-          <canvas id="visitChart" style="touch-action:none; width:100%; height:400px;"></canvas>
+          <canvas id="visitChart" style="touch-action:none; width:100%; height:100%;"></canvas>
         </div>
       </div>
     </div>
@@ -58,7 +58,7 @@
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Sessions by Track</h5>
         <div class="chart-container-ios">
-          <canvas id="pieChart" style="touch-action:none; width:100%; height:260px;"></canvas>
+          <canvas id="pieChart" style="touch-action:none; width:100%; height:100%;"></canvas>
         </div>
       </div>
     </div>
@@ -66,7 +66,7 @@
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Cumulative Sessions</h5>
         <div class="chart-container-ios">
-          <canvas id="cumulativeChart" style="touch-action:none; width:100%; height:400px;"></canvas>
+          <canvas id="cumulativeChart" style="touch-action:none; width:100%; height:100%;"></canvas>
         </div>
       </div>
     </div>
@@ -74,7 +74,7 @@
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Visits by Day of Week</h5>
         <div class="chart-container-ios">
-          <canvas id="dowChart" style="touch-action:none; width:100%; height:400px;"></canvas>
+          <canvas id="dowChart" style="touch-action:none; width:100%; height:100%;"></canvas>
         </div>
       </div>
     </div>
@@ -82,7 +82,7 @@
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Visits by Hour</h5>
         <div class="chart-container-ios">
-          <canvas id="hourlyChart" style="touch-action:none; width:100%; height:400px;"></canvas>
+          <canvas id="hourlyChart" style="touch-action:none; width:100%; height:100%;"></canvas>
         </div>
       </div>
     </div>
@@ -90,6 +90,7 @@
 </div>
 
 <style>
+
 .chart-container-ios {
     background-color: #fff;
     padding: 10px;
@@ -98,13 +99,25 @@
     -webkit-overflow-scrolling: touch;
     width: 100%;
     touch-action: none;
+    height: 100%;
+}
+
+.chart-container-ios canvas {
+    width: 100% !important;
+    height: 100% !important;
 }
 
 .chart-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-auto-rows: 350px;
     gap: 0.5rem;
-    align-items: start;
+    align-items: stretch;
+}
+
+.chart-grid .chart-card {
+    display: flex;
+    flex-direction: column;
 }
 
 .chart-title {
