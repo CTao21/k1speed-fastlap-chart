@@ -114,6 +114,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const pieLabelPlugin = {
         id: 'pieLabelPlugin',
         afterDraw(chart, args, opts) {
+            if (chart.config.type !== 'pie' || !chart.data.datasets.length) {
+                return;
+            }
             const { ctx } = chart;
             const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
             chart.getDatasetMeta(0).data.forEach((arc, i) => {
