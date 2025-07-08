@@ -3,8 +3,8 @@
 {% block content %}
 <div class="container mt-4">
   <div class="row gx-1 gy-1">
-    <div class="col-12">
-      <div class="main-card text-center chart-card">
+    <div class="col-md-4">
+      <div class="main-card text-center chart-card h-100">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h2>Visit Data</h2>
           <a href="{{ url_for('results') }}" class="btn btn-primary">Back to Results</a>
@@ -17,11 +17,8 @@
         <p class="text-dark mb-0 mt-2"><em>⚠️ This page is a work in progress ⚠️</em></p>
       </div>
     </div>
-  </div>
-
-  <div class="row gx-1 gy-1 mt-2">
-    <div class="col-12">
-        <div class="main-card chart-card">
+    <div class="col-md-8 mt-2 mt-md-0">
+      <div class="main-card chart-card h-100">
         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
           <label for="rangeFilter" class="form-label me-2">Time Range:</label>
           <select id="rangeFilter" class="form-select form-select-sm d-inline w-auto">
@@ -48,6 +45,7 @@
         </div>
       </div>
     </div>
+  <div class="row gx-1 gy-1 mt-2">
     <div class="col-lg-6">
       <div class="main-card chart-card">
         <div class="chart-container-ios">
