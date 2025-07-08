@@ -26,7 +26,7 @@
     </div>
     <button id="toggleOutliers" class="btn btn-warning btn-sm mb-1">Filter Outliers</button>
     <div class="input-group input-group-sm mb-1 mt-1" style="max-width: 200px;">
-      <input type="number" step="0.001" id="manualMax" class="form-control" placeholder="Max lap (s)">
+      <input type="number" step="0.001" id="manualMax" class="form-control" placeholder="Max lap time (s)">
       <button id="applyManualMax" class="btn btn-outline-secondary">Apply</button>
     </div>
     <div id="outlierInfo" class="text-muted small mb-3"></div>
@@ -82,14 +82,7 @@
             label: ctx => `Lap ${ctx.dataIndex + 1}: ${lapTimes[ctx.dataIndex].toFixed(3)}s`
           }
         },
-        zoom: {
-          pan: { enabled: true, mode: 'x' },
-          zoom: {
-            wheel: { enabled: true },
-            pinch: { enabled: true },
-            mode: 'x'
-          }
-        }
+        zoom: false
       },
       scales: {
         x: {
