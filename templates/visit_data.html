@@ -7,6 +7,7 @@
     <a href="{{ url_for('results') }}" class="btn btn-outline-secondary">Back to Results</a>
   </div>
   <p><strong>Favourite Track:</strong> {{ favourite_track }}</p>
+  <p class="text-dark mb-2"><em>⚠️ This page is a work in progress ⚠️</em></p>
 
   <div class="row g-3">
     <div class="col-12">
@@ -15,24 +16,25 @@
           <label for="rangeFilter" class="form-label me-2">Time Range:</label>
           <select id="rangeFilter" class="form-select form-select-sm d-inline w-auto">
             <option value="all" selected>All Time</option>
-        <option value="this_week">This Week</option>
-        <option value="this_month">This Month</option>
-        <option value="this_year">This Year</option>
-        <option value="custom">Custom Range</option>
-      </select>
-      <label for="sortBy" class="form-label ms-2 me-2">Sort By:</label>
-      <select id="sortBy" class="form-select form-select-sm d-inline w-auto">
-        <option value="day">Day</option>
-        <option value="week">Week</option>
-        <option value="month" selected>Month</option>
-        <option value="year">Year</option>
-      </select>
-      <div id="customRangeInputs" style="display:none;">
-        <label for="fromDate" class="form-label me-1">From:</label>
-        <input type="date" id="fromDate" class="form-control form-control-sm d-inline w-auto me-2">
-        <label for="toDate" class="form-label me-1">To:</label>
-        <input type="date" id="toDate" class="form-control form-control-sm d-inline w-auto">
-      </div>
+            <option value="this_week">This Week</option>
+            <option value="this_month">This Month</option>
+            <option value="this_year">This Year</option>
+          </select>
+          <label for="sortBy" class="form-label ms-2 me-2">Sort By:</label>
+          <select id="sortBy" class="form-select form-select-sm d-inline w-auto">
+            <option value="day">Day</option>
+            <option value="week">Week</option>
+            <option value="month" selected>Month</option>
+            <option value="year">Year</option>
+          </select>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+          <label for="fromDate" class="form-label me-1">From:</label>
+          <input type="date" id="fromDate" class="form-control form-control-sm d-inline w-auto me-2">
+          <label for="toDate" class="form-label me-1">To:</label>
+          <input type="date" id="toDate" class="form-control form-control-sm d-inline w-auto me-2">
+          <button id="applyManualDate" class="btn btn-outline-secondary btn-sm">Apply</button>
+          <button id="clearManualDate" class="btn btn-outline-secondary btn-sm">Clear</button>
         </div>
       </div>
     </div>
@@ -46,14 +48,28 @@
     <div class="col-lg-6">
       <div class="main-card">
         <div class="chart-container-ios">
-          <canvas id="countChart" style="touch-action:none; width:100%; height:400px;"></canvas>
+          <canvas id="pieChart" style="touch-action:none; width:100%; height:400px;"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="main-card">
+        <div class="chart-container-ios">
+          <canvas id="cumulativeChart" style="touch-action:none; width:100%; height:400px;"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="main-card">
+        <div class="chart-container-ios">
+          <canvas id="dowChart" style="touch-action:none; width:100%; height:400px;"></canvas>
         </div>
       </div>
     </div>
     <div class="col-lg-12">
       <div class="main-card">
         <div class="chart-container-ios">
-          <canvas id="cumulativeChart" style="touch-action:none; width:100%; height:400px;"></canvas>
+          <canvas id="hourlyChart" style="touch-action:none; width:100%; height:400px;"></canvas>
         </div>
       </div>
     </div>
@@ -78,39 +94,205 @@ document.addEventListener("DOMContentLoaded", function () {
     const trackNames = Object.keys(trackData);
     const colors = ['#e74c3c','#3498db','#2ecc71','#9b59b6','#f1c40f','#e67e22','#1abc9c','#34495e'];
 
+    let manualFrom = null;
+    let manualTo = null;
+
     const ctx = document.getElementById('visitChart');
-    const countCtx = document.getElementById('countChart');
+    const pieCtx = document.getElementById('pieChart');
     const cumCtx = document.getElementById('cumulativeChart');
+    const dowCtx = document.getElementById('dowChart');
+    const hourlyCtx = document.getElementById('hourlyChart');
+    
     const chart = new Chart(ctx, {
-        type: 'scatter',
-        data: { datasets: [] },
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: {
+            responsive: true,
+            plugins: { 
+                legend: { 
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 20,
+                        padding: 20
+                    }
+                } 
+            },
+            scales: {
+                x: { 
+                    stacked: true, 
+                    title: { display: true, text: 'Date' } 
+                },
+                y: { 
+                    beginAtZero: true, 
+                    stacked: true, 
+                    ticks: { stepSize: 1 }, 
+                    title: { display: true, text: 'Sessions' } 
+                }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutQuad'
+            }
+        }
+    });
+    
+    const pieChart = new Chart(pieCtx, {
+        type: 'pie',
+        data: { labels: [], datasets: [{ data: [], backgroundColor: colors, borderColor: '#000', borderWidth: 1 }] },
         options: {
             responsive: true,
             plugins: {
-                legend: { display: true },
-                tooltip: { enabled: false }
-            },
-            hover: { mode: null },
-            interaction: { mode: null },
-            scales: {
-                x: { type: 'category', title: { display: true, text: 'Date' } },
-                y: {
-                    beginAtZero: true,
-                    ticks: { stepSize: 1 },
-                    title: { display: true, text: 'Sessions' }
+                legend: {
+                    position: 'right',
+                    labels: {
+                        generateLabels(chart) {
+                            const counts = chart.data.datasets[0].data;
+                            const total = counts.reduce((a,b) => a+b, 0) || 1;
+                            return chart.data.labels.map((label,i) => {
+                                const value = counts[i] || 0;
+                                const pct = ((value/total)*100).toFixed(1);
+                                return {
+                                    text: `${label}: ${pct}% (${value})`,
+                                    fillStyle: colors[i % colors.length],
+                                    strokeStyle: '#000',
+                                    lineWidth: 1,
+                                    hidden: false,
+                                    index: i
+                                };
+                            });
+                        },
+                        boxWidth: 20,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
                 }
             }
         }
     });
-    const countChart = new Chart(countCtx, {
-        type: 'bar',
-        data: { labels: [], datasets: [{ label: 'Sessions', data: [], backgroundColor: '#3498db' }] },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-    });
+    
     const cumChart = new Chart(cumCtx, {
         type: 'line',
-        data: { labels: [], datasets: [{ label: 'Total Sessions', data: [], borderColor: '#e67e22', fill: false }] },
-        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        data: { 
+            labels: [], 
+            datasets: [
+                {
+                    label: 'Total Sessions', 
+                    data: [], 
+                    borderColor: '#e67e22',
+                    backgroundColor: 'rgba(230, 126, 34, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }
+            ] 
+        },
+        options: { 
+            responsive: true, 
+            scales: { 
+                y: { beginAtZero: true },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            }
+        }
+    });
+    
+    const dowChart = new Chart(dowCtx, {
+        type: 'bar',
+        data: { 
+            labels: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'], 
+            datasets: [
+                {
+                    label: 'Visits', 
+                    data: [], 
+                    backgroundColor: '#3498db',
+                    borderColor: '#2980b9',
+                    borderWidth: 1
+                }
+            ] 
+        },
+        options: { 
+            responsive: true, 
+            plugins: { 
+                legend: { display: false } 
+            }, 
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    ticks: { stepSize: 1 } 
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Day of Week'
+                    }
+                }
+            } 
+        }
+    });
+    
+    const hourlyChart = new Chart(hourlyCtx, {
+        type: 'bar',
+        data: {
+            labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+            datasets: [
+                {
+                    label: 'Visits by Hour',
+                    data: Array(24).fill(0),
+                    backgroundColor: '#9b59b6',
+                    borderColor: '#8e44ad',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    },
+                    title: {
+                        display: true,
+                        text: 'Visits'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Hour of Day'
+                    }
+                }
+            }
+        }
     });
 
     function getRange(range) {
@@ -126,132 +308,132 @@ document.addEventListener("DOMContentLoaded", function () {
             fromDate.setDate(now.getDate() - day + 1);
         } else if (range === 'this_year') {
             fromDate = new Date(now.getFullYear(), 0, 1);
-        } else if (range === 'custom') {
-            const f = document.getElementById('fromDate').value;
-            const t = document.getElementById('toDate').value;
-            if (f && t) {
-                fromDate = new Date(f);
-                toDate = new Date(t);
-            }
         }
+
+        if (manualFrom) fromDate = manualFrom;
+        if (manualTo) toDate = manualTo;
         return { fromDate, toDate };
     }
 
     function buildDatasets(sortBy, range) {
         const { fromDate, toDate } = getRange(range);
-        const sessions = [];
-        let earliest = null;
-        let latest = null;
         const trackTotals = {};
-        trackNames.forEach(n => trackTotals[n] = 0);
+        const countsPerKeyPerTrack = {};
+        trackNames.forEach(n => { trackTotals[n] = 0; countsPerKeyPerTrack[n] = {}; });
+        const sessions = [];
+        const hourlyCounts = Array(24).fill(0);
 
         trackNames.forEach(name => {
             trackData[name].forEach(d => {
                 const dt = new Date(d);
                 if (fromDate && dt < fromDate) return;
                 if (toDate && dt > toDate) return;
-                if (!earliest || dt < earliest) earliest = dt;
-                if (!latest || dt > latest) latest = dt;
+                
+                // Count for hourly chart
+                const hour = dt.getHours();
+                hourlyCounts[hour]++;
+                
                 let key = d;
-                if (sortBy === 'month') key = d.slice(0, 7);
-                else if (sortBy === 'year') key = d.slice(0, 4);
+                if (sortBy === 'month') key = d.slice(0,7);
+                else if (sortBy === 'year') key = d.slice(0,4);
                 else if (sortBy === 'week') {
                     const dtCopy = new Date(dt);
                     const day = dtCopy.getDay() || 7;
-                    dtCopy.setDate(dtCopy.getDate() - day + 1); // Monday start
-                    key = dtCopy.toISOString().slice(0, 10);
+                    dtCopy.setDate(dtCopy.getDate() - day + 1);
+                    key = dtCopy.toISOString().slice(0,10);
                 }
-                sessions.push({ track: name, key: key, date: dt });
+                countsPerKeyPerTrack[name][key] = (countsPerKeyPerTrack[name][key] || 0) + 1;
                 trackTotals[name] += 1;
+                sessions.push(dt);
             });
         });
 
-        if (!sessions.length) {
-            return { labels: [], datasets: [], maxCount: 0 };
-        }
-
-        sessions.sort((a, b) => a.date - b.date);
-
-        const countsPerKey = {};
-        const dataPerTrack = {};
-        trackNames.forEach(name => { dataPerTrack[name] = []; });
-        let maxCount = 0;
-
-        sessions.forEach(s => {
-            countsPerKey[s.key] = (countsPerKey[s.key] || 0) + 1;
-            const y = countsPerKey[s.key];
-            dataPerTrack[s.track].push({ x: s.key, y: y });
-            if (y > maxCount) maxCount = y;
-        });
-
-        const start = fromDate || earliest;
-        const end = toDate || latest;
-        const labels = [];
-        const current = new Date(start);
-        while (current <= end) {
-            if (sortBy === 'month') {
-                labels.push(current.toISOString().slice(0, 7));
-                current.setMonth(current.getMonth() + 1);
-            } else if (sortBy === 'year') {
-                labels.push(String(current.getFullYear()));
-                current.setFullYear(current.getFullYear() + 1);
-            } else if (sortBy === 'week') {
-                const weekStart = new Date(current);
-                const day = weekStart.getDay() || 7;
-                weekStart.setDate(weekStart.getDate() - day + 1);
-                labels.push(weekStart.toISOString().slice(0, 10));
-                current.setDate(current.getDate() + 7);
-            } else {
-                labels.push(current.toISOString().slice(0, 10));
-                current.setDate(current.getDate() + 1);
-            }
-        }
+        const keysSet = new Set();
+        trackNames.forEach(n => Object.keys(countsPerKeyPerTrack[n]).forEach(k => keysSet.add(k)));
+        const labels = Array.from(keysSet).sort();
 
         const datasets = trackNames.map((name, idx) => ({
             label: name,
-            data: dataPerTrack[name],
-            borderColor: colors[idx % colors.length],
+            data: labels.map(k => countsPerKeyPerTrack[name][k] || 0),
             backgroundColor: colors[idx % colors.length],
-            pointRadius: 5,
-            showLine: false
+            borderColor: '#000',
+            borderWidth: 1,
+            stack: 'sessions'
         }));
 
         const counts = trackNames.map(n => trackTotals[n]);
 
-        let cumulative = [];
-        let total = 0;
-        sessions.forEach(s => {
-            total += 1;
-            const label = s.date.toISOString().slice(0,10);
-            cumulative.push({ x: label, y: total });
+        // cumulative totals
+        const totalsByLabel = {};
+        sessions.forEach(dt => {
+            let label = dt.toISOString().slice(0,10);
+            if (sortBy === 'month') label = label.slice(0,7);
+            else if (sortBy === 'year') label = label.slice(0,4);
+            else if (sortBy === 'week') {
+                const copy = new Date(dt);
+                const day = copy.getDay() || 7;
+                copy.setDate(copy.getDate() - day + 1);
+                label = copy.toISOString().slice(0,10);
+            }
+            totalsByLabel[label] = (totalsByLabel[label] || 0) + 1;
+        });
+        const cumulative = [];
+        let running = 0;
+        labels.forEach(label => {
+            running += totalsByLabel[label] || 0;
+            cumulative.push(running);
         });
 
-        return { labels, datasets, maxCount, counts, cumulative };
+        // visits by day of week
+        const dow = [0,0,0,0,0,0,0];
+        sessions.forEach(dt => {
+            let idx = dt.getDay();
+            idx = (idx + 6) % 7; // Monday=0
+            dow[idx] += 1;
+        });
+
+        return { labels, datasets, counts, cumulative, dow, hourlyCounts };
     }
 
     function updateChart() {
         const range = document.getElementById('rangeFilter').value;
         const sortBy = document.getElementById('sortBy').value;
         const result = buildDatasets(sortBy, range);
+        
         chart.data.labels = result.labels;
         chart.data.datasets = result.datasets;
-        chart.options.scales.y.max = result.maxCount + 1;
         chart.update();
-        countChart.data.labels = trackNames;
-        countChart.data.datasets[0].data = result.counts;
-        countChart.update();
-        cumChart.data.labels = result.cumulative.map(d => d.x);
-        cumChart.data.datasets[0].data = result.cumulative.map(d => d.y);
+        
+        pieChart.data.labels = trackNames;
+        pieChart.data.datasets[0].data = result.counts;
+        pieChart.update();
+        
+        cumChart.data.labels = result.labels;
+        cumChart.data.datasets[0].data = result.cumulative;
         cumChart.update();
+        
+        dowChart.data.datasets[0].data = result.dow;
+        dowChart.update();
+        
+        hourlyChart.data.datasets[0].data = result.hourlyCounts;
+        hourlyChart.update();
     }
 
-    document.getElementById('rangeFilter').addEventListener('change', function () {
-        document.getElementById('customRangeInputs').style.display = this.value === 'custom' ? 'block' : 'none';
+    document.getElementById('rangeFilter').addEventListener('change', updateChart);
+    document.getElementById('sortBy').addEventListener('change', updateChart);
+    document.getElementById('applyManualDate').addEventListener('click', () => {
+        const f = document.getElementById('fromDate').value;
+        const t = document.getElementById('toDate').value;
+        manualFrom = f ? new Date(f) : null;
+        manualTo = t ? new Date(t) : null;
         updateChart();
     });
-    document.getElementById('sortBy').addEventListener('change', updateChart);
-    document.getElementById('fromDate').addEventListener('change', updateChart);
-    document.getElementById('toDate').addEventListener('change', updateChart);
+    document.getElementById('clearManualDate').addEventListener('click', () => {
+        manualFrom = manualTo = null;
+        document.getElementById('fromDate').value = '';
+        document.getElementById('toDate').value = '';
+        updateChart();
+    });
 
     updateChart();
 });
