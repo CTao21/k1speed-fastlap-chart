@@ -20,6 +20,11 @@ body {
     overflow: hidden; /* clip background inside rounded corners */
 }
 
+/* Tighter margins for stacked chart cards */
+.chart-card {
+    margin: 0.5rem 0;
+}
+
 .wide-card {
     max-width: 1200px;
 }
