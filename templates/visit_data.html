@@ -11,7 +11,7 @@
         </div>
         <h5 class="mb-1">{{ username }}</h5>
         <p class="mb-1">Total Races: <strong id="totalRaces">{{ total_races }}</strong></p>
-        {% if racer_since %}<p class="mb-1">Racer Since: {{ racer_since }}</p>{% endif %}
+        {% if racer_since %}<p class="mb-1">Racer Since: <span id="racerSince">{{ racer_since }}</span></p>{% endif %}
         {% if favourite_track %}<p class="mb-1">Favourite Location: <span id="favLocation">{{ favourite_track }}</span></p>{% endif %}
         {% if favourite_day %}<p class="mb-0">Favourite Day: <span id="favDay">{{ favourite_day }}</span></p>{% endif %}
         <div class="d-flex flex-wrap align-items-center gap-2 mb-2 mt-3">
@@ -47,41 +47,8 @@
         </div>
       </div>
     </div>
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-          <label for="rangeFilter" class="form-label me-2">Time Range:</label>
-          <select id="rangeFilter" class="form-select form-select-sm d-inline w-auto">
-            <option value="all" selected>All Time</option>
-            <option value="this_week">This Week</option>
-            <option value="this_month">This Month</option>
-            <option value="this_year">This Year</option>
-          </select>
-          <label for="sortBy" class="form-label ms-2 me-2">Sort By:</label>
-          <select id="sortBy" class="form-select form-select-sm d-inline w-auto">
-            <option value="day">Day</option>
-            <option value="week">Week</option>
-            <option value="month" selected>Month</option>
-            <option value="year">Year</option>
-          </select>
-          <label for="trackSelect" class="form-label ms-2 me-2">Track:</label>
-          <select id="trackSelect" class="form-select form-select-sm d-inline w-auto">
-            <option value="all" selected>All Tracks</option>
-            {% for name, count in track_options %}
-            <option value="{{ name }}">{{ name }} ({{ count }})</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-          <label for="fromDate" class="form-label me-1">From:</label>
-          <input type="date" id="fromDate" class="form-control form-control-sm d-inline w-auto me-2">
-          <label for="toDate" class="form-label me-1">To:</label>
-          <input type="date" id="toDate" class="form-control form-control-sm d-inline w-auto me-2">
-          <button id="applyManualDate" class="btn btn-outline-secondary btn-sm">Apply</button>
-          <button id="clearManualDate" class="btn btn-outline-secondary btn-sm">Clear</button>
-        </div>
-      </div>
-    </div>
   <div class="chart-grid mt-2">
-    <div>
+    <div id="pieChartCard">
       <div class="main-card chart-card">
         <h5 class="chart-title text-center">Sessions Over Time</h5>
         <div class="chart-container-ios">
@@ -144,8 +111,7 @@
 
 .chart-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    grid-auto-rows: 400px;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 0.5rem;
     align-items: stretch;
 }
@@ -153,8 +119,7 @@
 .chart-grid .chart-card {
     display: flex;
     flex-direction: column;
-    min-width: 400px;
-    min-height: 400px;
+    min-height: 300px;
 }
 
 .chart-title {
@@ -179,6 +144,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const dowCtx = document.getElementById('dowChart');
     const hourlyCtx = document.getElementById('hourlyChart');
     const trackSelect = document.getElementById('trackSelect');
+    const pieCard = document.getElementById('pieChartCard');
 
     
     const chart = new Chart(ctx, {
@@ -463,9 +429,11 @@ document.addEventListener("DOMContentLoaded", function () {
         let maxDow = 0;
         dow.forEach((v, i) => { if (v > maxDow) { maxDow = v; favouriteDay = dowNames[i]; }});
 
+        const racerSince = sessions.length ? sessions.reduce((a,b) => a < b ? a : b).toISOString().slice(0,10) : null;
+
         return { labels, datasets, counts, cumulative, dow, hourlyCounts,
                  totalVisits: sessions.length,
-                 favouriteTrack, favouriteDay };
+                 favouriteTrack, favouriteDay, racerSince };
     }
 
     function updateTrackSelection() {
@@ -482,10 +450,15 @@ document.addEventListener("DOMContentLoaded", function () {
         chart.data.labels = result.labels;
         chart.data.datasets = result.datasets;
         chart.update();
-        
-        pieChart.data.labels = trackNames;
-        pieChart.data.datasets[0].data = result.counts;
-        pieChart.update();
+
+        if (trackSelect.value === 'all') {
+            pieCard.style.display = '';
+            pieChart.data.labels = trackNames;
+            pieChart.data.datasets[0].data = result.counts;
+            pieChart.update();
+        } else {
+            pieCard.style.display = 'none';
+        }
         
         cumChart.data.labels = result.labels;
         cumChart.data.datasets[0].data = result.cumulative;
@@ -498,6 +471,9 @@ document.addEventListener("DOMContentLoaded", function () {
         hourlyChart.update();
 
         document.getElementById('totalRaces').textContent = result.totalVisits;
+        if (result.racerSince) {
+            document.getElementById('racerSince').textContent = result.racerSince;
+        }
         if (result.favouriteTrack) {
             document.getElementById('favLocation').textContent = result.favouriteTrack;
         }
