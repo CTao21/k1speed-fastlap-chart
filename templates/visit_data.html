@@ -112,7 +112,7 @@
 
 .chart-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 0.5rem;
     align-items: stretch;
 }
@@ -160,14 +160,22 @@ document.addEventListener("DOMContentLoaded", function () {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { 
+                legend: {
                     display: true,
                     position: 'bottom',
                     labels: {
                         boxWidth: 20,
                         padding: 20
                     }
-                } 
+                },
+                datalabels: {
+                    color: '#000',
+                    anchor: 'end',
+                    align: 'start',
+                    formatter: function(value) {
+                        return value > 0 ? value : '';
+                    }
+                }
             },
             scales: {
                 x: { 
@@ -205,6 +213,14 @@ document.addEventListener("DOMContentLoaded", function () {
                             const percentage = Math.round((value / total) * 100);
                             return `${label}: ${value} (${percentage}%)`;
                         }
+                    }
+                },
+                datalabels: {
+                    color: '#000',
+                    formatter: function(value, context) {
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = Math.round((value / total) * 100);
+                        return `${percentage}% (${value})`;
                     }
                 }
             }
@@ -268,8 +284,16 @@ document.addEventListener("DOMContentLoaded", function () {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false } 
-            }, 
+                legend: { display: false },
+                datalabels: {
+                    color: '#000',
+                    anchor: 'end',
+                    align: 'start',
+                    formatter: function(value) {
+                        return value > 0 ? value : '';
+                    }
+                }
+            },
             scales: { 
                 y: { 
                     beginAtZero: true, 
@@ -305,6 +329,14 @@ document.addEventListener("DOMContentLoaded", function () {
             plugins: {
                 legend: {
                     display: false
+                },
+                datalabels: {
+                    color: '#000',
+                    anchor: 'end',
+                    align: 'start',
+                    formatter: function(value) {
+                        return value > 0 ? value : '';
+                    }
                 }
             },
             scales: {
