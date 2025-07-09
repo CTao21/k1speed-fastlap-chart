@@ -117,6 +117,12 @@
     align-items: stretch;
 }
 
+@media (min-width: 992px) {
+    .chart-grid {
+        grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+    }
+}
+
 .chart-grid .chart-card {
     display: flex;
     flex-direction: column;
