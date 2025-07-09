@@ -29,6 +29,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+    <script>
+        // Register Chart.js plugins
+        if (window.Chart && window.ChartDataLabels) {
+            Chart.register(ChartDataLabels);
+        }
+    </script>
     <footer class="text-center mt-4 mb-2 text-muted small">
         This is an unofficial app. Not affiliated with or endorsed by K1 Speed.
     </footer>
