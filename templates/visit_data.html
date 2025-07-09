@@ -141,6 +141,74 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const calloutLabels = {
+        id: 'calloutLabels',
+        afterDatasetsDraw(chart, args, options) {
+            const ctx = chart.ctx;
+            const cfg = Object.assign({barThreshold: 20, pieAngle: 0.5, offset: 10}, options);
+            ctx.save();
+            chart.data.datasets.forEach((dataset, di) => {
+                const meta = chart.getDatasetMeta(di);
+                meta.data.forEach((element, i) => {
+                    const val = dataset.data[i];
+                    if (val == null || val === 0) return;
+                    ctx.fillStyle = '#000';
+                    ctx.strokeStyle = '#000';
+                    ctx.font = '12px sans-serif';
+                    if (meta.type === 'pie') {
+                        const angle = (element.startAngle + element.endAngle) / 2;
+                        const len = element.endAngle - element.startAngle;
+                        const r = element.outerRadius;
+                        const cx = element.x;
+                        const cy = element.y;
+                        const sx = cx + Math.cos(angle) * r;
+                        const sy = cy + Math.sin(angle) * r;
+                        const text = (() => {
+                            const total = dataset.data.reduce((a,b)=>a+b,0);
+                            const pct = Math.round((val/total)*100);
+                            return `${pct}% (${val})`;
+                        })();
+                        if (len < cfg.pieAngle) {
+                            const ex = cx + Math.cos(angle) * (r + cfg.offset);
+                            const ey = cy + Math.sin(angle) * (r + cfg.offset);
+                            ctx.beginPath();
+                            ctx.moveTo(sx, sy);
+                            ctx.lineTo(ex, ey);
+                            ctx.stroke();
+                            ctx.textAlign = Math.cos(angle) >= 0 ? 'left' : 'right';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(text, ex + (Math.cos(angle) >= 0 ? 4 : -4), ey);
+                        } else {
+                            const pos = element.tooltipPosition();
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(text, pos.x, pos.y);
+                        }
+                    } else if (meta.type === 'bar') {
+                        const h = Math.abs(element.base - element.y);
+                        const pos = element.tooltipPosition();
+                        const text = val;
+                        ctx.textAlign = 'center';
+                        if (h < cfg.barThreshold) {
+                            const ex = element.x;
+                            const ey = element.y - cfg.offset;
+                            ctx.beginPath();
+                            ctx.moveTo(element.x, element.y);
+                            ctx.lineTo(ex, ey);
+                            ctx.stroke();
+                            ctx.textBaseline = 'bottom';
+                            ctx.fillText(text, ex, ey - 2);
+                        } else {
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(text, pos.x, pos.y);
+                        }
+                    }
+                });
+            });
+            ctx.restore();
+        }
+    };
+    Chart.register(calloutLabels);
     const trackData = {{ visit_data | tojson }};
     const allTrackNames = Object.keys(trackData);
     let trackNames = allTrackNames.slice();
@@ -174,14 +242,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         padding: 20
                     }
                 },
-                datalabels: {
-                    color: '#000',
-                    anchor: 'end',
-                    align: 'start',
-                    formatter: function(value) {
-                        return value > 0 ? value : '';
-                    }
-                }
+                calloutLabels: {},
+                datalabels: { display: false }
             },
             scales: {
                 x: { 
@@ -221,14 +283,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                     }
                 },
-                datalabels: {
-                    color: '#000',
-                    formatter: function(value, context) {
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const percentage = Math.round((value / total) * 100);
-                        return `${percentage}% (${value})`;
-                    }
-                }
+                calloutLabels: {},
+                datalabels: { display: false }
             }
         }
     });
@@ -264,10 +320,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             },
             plugins: {
+                legend: { display: false },
                 tooltip: {
                     mode: 'index',
                     intersect: false
-                }
+                },
+                datalabels: { display: false }
             }
         }
     });
@@ -291,14 +349,8 @@ document.addEventListener("DOMContentLoaded", function () {
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
-                datalabels: {
-                    color: '#000',
-                    anchor: 'end',
-                    align: 'start',
-                    formatter: function(value) {
-                        return value > 0 ? value : '';
-                    }
-                }
+                calloutLabels: {},
+                datalabels: { display: false }
             },
             scales: { 
                 y: { 
@@ -336,14 +388,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 legend: {
                     display: false
                 },
-                datalabels: {
-                    color: '#000',
-                    anchor: 'end',
-                    align: 'start',
-                    formatter: function(value) {
-                        return value > 0 ? value : '';
-                    }
-                }
+                calloutLabels: {},
+                datalabels: { display: false }
             },
             scales: {
                 y: {
