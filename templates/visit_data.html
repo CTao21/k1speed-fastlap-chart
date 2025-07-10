@@ -144,6 +144,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const calloutLabels = {
         id: 'calloutLabels',
         afterDatasetsDraw(chart, args, options) {
+            if (!options) return;
             const ctx = chart.ctx;
             const cfg = Object.assign({barThreshold: 20, pieAngle: 0.5, offset: 10}, options);
             ctx.save();
@@ -242,7 +243,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         padding: 20
                     }
                 },
-                calloutLabels: {},
                 datalabels: { display: false }
             },
             scales: {
@@ -349,7 +349,6 @@ document.addEventListener("DOMContentLoaded", function () {
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
-                calloutLabels: {},
                 datalabels: { display: false }
             },
             scales: { 
@@ -388,7 +387,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 legend: {
                     display: false
                 },
-                calloutLabels: {},
                 datalabels: { display: false }
             },
             scales: {
