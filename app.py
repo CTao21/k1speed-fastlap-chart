@@ -459,6 +459,10 @@ def results():
     if all_sessions:
         racer_since = min(all_sessions, key=lambda s: s.date).date.strftime('%Y-%m-%d')
 
+    most_recent = None
+    if all_sessions:
+        most_recent = max(all_sessions, key=lambda s: s.date).date.strftime('%Y-%m-%d')
+
     favourite_track = None
     if sorted_tracks:
         favourite_track = sorted_tracks[0][0]
@@ -479,7 +483,8 @@ def results():
         total_races=total_races,
         racer_since=racer_since,
         favourite_track=favourite_track,
-        favourite_day=fav_day
+        favourite_day=fav_day,
+        most_recent_race=most_recent
     )
 
 

@@ -450,7 +450,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     hourlyCounts[hour - 11]++;
                 }
                 
-                let key = d;
+                let key;
                 if (sortBy === 'month') key = d.slice(0,7);
                 else if (sortBy === 'year') key = d.slice(0,4);
                 else if (sortBy === 'week') {
@@ -458,6 +458,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     const day = dtCopy.getDay() || 7;
                     dtCopy.setDate(dtCopy.getDate() - day + 1);
                     key = dtCopy.toISOString().slice(0,10);
+                } else {
+                    key = d.slice(0,10);
                 }
                 countsPerKeyPerTrack[name][key] = (countsPerKeyPerTrack[name][key] || 0) + 1;
                 trackTotals[name] += 1;
