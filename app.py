@@ -59,7 +59,13 @@ EMAIL_PROVIDER_IMAP = {
 # --- Track-specific lap time cutoffs ---
 LAP_TIME_CUTOFFS = {
     'Burbank': 23.2,
-    'Thousand Oaks': 27.5
+    'Thousand Oaks': 27.5,
+    'Torrance': 26.0,
+    'Anaheim': 24.0,
+    'Chula Vista': 19.0,
+    'Carlsbad': 27.0,
+    'Ontario Track 1': 22.0,
+    'Ontario Track 2': 21.0
 }
 
 # Locations that only have a single track even if emails label them "T1"
@@ -129,8 +135,11 @@ def track_image_filename(raw_name):
     name = raw_name.strip().lower().replace(' ', '_')
     filename = f"{name}.jpeg"
     path = os.path.join(app.root_path, 'static', 'img', 'tracks', filename)
-    if not os.path.exists(path) and name.endswith('_t1'):
-        filename = f"{name[:-3]}.jpeg"
+    if not os.path.exists(path):
+        if name.endswith('_t1'):
+            filename = f"{name[:-3]}.jpeg"
+        elif name.endswith('_track_1'):
+            filename = f"{name[:-8]}.jpeg"
     return filename
 
 
@@ -158,10 +167,13 @@ def parse_email(msg, k1_name):
     date = datetime.strptime(f"{date_str} {time_str}", "%m/%d/%y %I:%M %p")
 
     loc_clean = loc_raw.strip().title()
-    if loc_clean.endswith(' T1'):
-        base = loc_clean[:-3]
-        if base in SINGLE_TRACK_LOCATIONS:
-            loc_clean = base
+    # Normalize single-track locations that may be labeled with track numbers
+    for suffix in (' T1', ' Track 1'):
+        if loc_clean.endswith(suffix):
+            base = loc_clean[:-len(suffix)]
+            if base in SINGLE_TRACK_LOCATIONS:
+                loc_clean = base
+                break
 
     display_loc = re.sub(r"\bT(\d)\b", r"Track \1", loc_clean)
 
