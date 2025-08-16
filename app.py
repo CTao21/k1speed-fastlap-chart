@@ -62,6 +62,11 @@ LAP_TIME_CUTOFFS = {
     'Thousand Oaks': 27.5
 }
 
+# Locations that only have a single track even if emails label them "T1"
+SINGLE_TRACK_LOCATIONS = {
+    'Torrance',
+}
+
 
 # --- Models ---
 class User(db.Model):
@@ -117,9 +122,16 @@ def filter_laps_by_cutoff(display_location, laps):
 
 
 def track_image_filename(raw_name):
-    """Return the standardized track image filename."""
+    """Return the standardized track image filename.
+
+    Falls back to a non-T1 version if a T1-specific image is missing.
+    """
     name = raw_name.strip().lower().replace(' ', '_')
-    return f"{name}.jpeg"
+    filename = f"{name}.jpeg"
+    path = os.path.join(app.root_path, 'static', 'img', 'tracks', filename)
+    if not os.path.exists(path) and name.endswith('_t1'):
+        filename = f"{name[:-3]}.jpeg"
+    return filename
 
 
 def parse_email(msg, k1_name):
@@ -144,7 +156,14 @@ def parse_email(msg, k1_name):
         return None
     loc_raw, date_str, time_str = m.groups()
     date = datetime.strptime(f"{date_str} {time_str}", "%m/%d/%y %I:%M %p")
-    display_loc = re.sub(r"\bT(\d)\b", r"Track \1", loc_raw.strip().title())
+
+    loc_clean = loc_raw.strip().title()
+    if loc_clean.endswith(' T1'):
+        base = loc_clean[:-3]
+        if base in SINGLE_TRACK_LOCATIONS:
+            loc_clean = base
+
+    display_loc = re.sub(r"\bT(\d)\b", r"Track \1", loc_clean)
 
     # extract lap times
     laps = [float(x) for x in re.findall(r"\(\d+\)\s*([\d.]+)", text)]
@@ -167,7 +186,7 @@ def parse_email(msg, k1_name):
     fastest_idx = laps.index(best_lap) + 1
 
     return {
-        'raw_location': loc_raw.strip(),
+        'raw_location': loc_clean,
         'display_location': display_loc,
         'date': date,
         'laps': laps,
