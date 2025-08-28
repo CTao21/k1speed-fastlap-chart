@@ -12,6 +12,7 @@ from flask import (
 )
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
+from sqlalchemy import or_
 
 # for parsing raw email bytes
 from email.parser import BytesParser
@@ -99,6 +100,38 @@ class Session(db.Model):
     lap_data        = db.Column(db.Text)
     track_id        = db.Column(db.Integer, db.ForeignKey('track.id'), nullable=False)
 
+
+def merge_single_track_duplicates():
+    """Merge any duplicate Track entries for single-track locations."""
+    for base in SINGLE_TRACK_LOCATIONS:
+        variants = [f"{base} Track 1", f"{base} T1"]
+
+        base_track = Track.query.filter(
+            or_(Track.raw_name == base, Track.display_name == base)
+        ).first()
+        if not base_track:
+            base_track = Track.query.filter(
+                or_(Track.raw_name == variants[0], Track.display_name == variants[0])
+            ).first()
+            if base_track:
+                base_track.raw_name = base
+                base_track.display_name = base
+
+        for var in variants:
+            dupes = Track.query.filter(
+                or_(Track.raw_name == var, Track.display_name == var)
+            ).all()
+            for t in dupes:
+                if base_track and t.id != base_track.id:
+                    for s in t.sessions:
+                        s.track_id = base_track.id
+                    db.session.delete(t)
+                else:
+                    t.raw_name = base
+                    t.display_name = base
+                    base_track = t
+
+    db.session.commit()
 
 # --- Helpers ---
 def extract_email_body(msg):
@@ -724,6 +757,7 @@ def track_leaderboard(track_name):
 # Create tables & run
 with app.app_context():
     db.create_all()
+    merge_single_track_duplicates()
 
 if __name__ == '__main__':
     app.run(debug=True)
