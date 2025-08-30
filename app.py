@@ -62,12 +62,6 @@ LAP_TIME_CUTOFFS = {
     'Thousand Oaks': 27.5
 }
 
-# Locations that only have a single track even if emails label them "T1"
-SINGLE_TRACK_LOCATIONS = {
-    'Torrance',
-}
-
-
 # --- Models ---
 class User(db.Model):
     id                  = db.Column(db.Integer, primary_key=True)
@@ -121,12 +115,20 @@ def filter_laps_by_cutoff(display_location, laps):
     return [lap for lap in laps if lap >= cutoff]
 
 
+# Image file overrides for tracks that don't follow the standard naming convention
+TRACK_IMAGE_OVERRIDES = {
+    'torrance_t1': 'torrance.jpeg',
+}
+
 def track_image_filename(raw_name):
     """Return the standardized track image filename.
 
     Falls back to a non-T1 version if a T1-specific image is missing.
     """
     name = raw_name.strip().lower().replace(' ', '_')
+    if name in TRACK_IMAGE_OVERRIDES:
+        return TRACK_IMAGE_OVERRIDES[name]
+
     filename = f"{name}.jpeg"
     path = os.path.join(app.root_path, 'static', 'img', 'tracks', filename)
     if not os.path.exists(path) and name.endswith('_t1'):
@@ -158,11 +160,6 @@ def parse_email(msg, k1_name):
     date = datetime.strptime(f"{date_str} {time_str}", "%m/%d/%y %I:%M %p")
 
     loc_clean = loc_raw.strip().title()
-    if loc_clean.endswith(' T1'):
-        base = loc_clean[:-3]
-        if base in SINGLE_TRACK_LOCATIONS:
-            loc_clean = base
-
     display_loc = re.sub(r"\bT(\d)\b", r"Track \1", loc_clean)
 
     # extract lap times
