@@ -12,6 +12,7 @@ from flask import (
 )
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
+from sqlalchemy import func
 
 # for parsing raw email bytes
 from email.parser import BytesParser
@@ -351,9 +352,20 @@ def import_results():
               .order_by(Session.date.desc())
               .first()
         )
-        if latest_row:
+
+        # Allow manually overriding the search start date via query string to
+        # help recover missed sessions (expected format YYYY-MM-DD)
+        override = request.args.get('start_date')
+        if override:
+            try:
+                override_dt = datetime.strptime(override, '%Y-%m-%d')
+                since_str = override_dt.strftime('%d-%b-%Y')
+            except ValueError:
+                return jsonify(status='error',
+                               message='Invalid start_date format; use YYYY-MM-DD')
+        elif latest_row:
             last_dt = latest_row[0]
-            since_str = last_dt.strftime("%d-%b-%Y")  # e.g. "25-May-2025"
+            since_str = last_dt.strftime('%d-%b-%Y')  # e.g. "25-May-2025"
         else:
             since_str = None
 
@@ -657,11 +669,15 @@ def download(track_name):
 
 @app.route('/leaderboard')
 def leaderboard():
-    # Pull distinct display_names, alphabetically
+    # Only include tracks with more than one session from consenting users
     rows = (
         db.session
           .query(Track.display_name)
-          .distinct()
+          .join(Session)
+          .join(User)
+          .filter(User.leaderboard_consent == True)
+          .group_by(Track.display_name)
+          .having(func.count(Session.id) > 1)
           .order_by(Track.display_name)
           .all()
     )
