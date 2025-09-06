@@ -13,8 +13,7 @@
 
 <script>
     // Start import process immediately
-    // Temporarily force search to begin on 2025-08-14 to recover missing sessions
-    fetch("{{ url_for('import_results', start_date='2025-08-14') }}")
+    fetch("{{ url_for('import_results') }}")
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
