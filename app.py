@@ -353,17 +353,7 @@ def import_results():
               .first()
         )
 
-        # Allow manually overriding the search start date via query string to
-        # help recover missed sessions (expected format YYYY-MM-DD)
-        override = request.args.get('start_date')
-        if override:
-            try:
-                override_dt = datetime.strptime(override, '%Y-%m-%d')
-                since_str = override_dt.strftime('%d-%b-%Y')
-            except ValueError:
-                return jsonify(status='error',
-                               message='Invalid start_date format; use YYYY-MM-DD')
-        elif latest_row:
+        if latest_row:
             last_dt = latest_row[0]
             since_str = last_dt.strftime('%d-%b-%Y')  # e.g. "25-May-2025"
         else:
