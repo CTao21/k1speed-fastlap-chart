@@ -129,11 +129,12 @@
 
 /* Table styles (unchanged) */
 .table-container-ios {
-    overflow-x: auto;
+    overflow: auto;
     -webkit-overflow-scrolling: touch;
     width: 100%;
     border-radius: 8px;
     margin-bottom: 1rem;
+    max-height: 400px;
 }
 .table-container-ios table {
     min-width: 600px;
@@ -436,6 +437,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const MAX_ROWS = 10;
     const table = document.getElementById('lapsTable');
     const btnToggle = document.getElementById('toggleRows');
+    const tableContainer = document.querySelector('.table-container-ios');
     const rows = Array.from(table.tBodies[0].rows);
     if (rows.length > MAX_ROWS) {
         rows.slice(MAX_ROWS).forEach(r => r.classList.add('d-none'));
@@ -444,9 +446,11 @@ document.addEventListener("DOMContentLoaded", function () {
             if (hidden.length) {
                 hidden.forEach(r => r.classList.remove('d-none'));
                 btnToggle.textContent = 'Show Less';
+                tableContainer.style.maxHeight = '80vh';
             } else {
                 rows.slice(MAX_ROWS).forEach(r => r.classList.add('d-none'));
                 btnToggle.textContent = 'Show All';
+                tableContainer.style.maxHeight = '400px';
             }
         });
     } else {
@@ -482,6 +486,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!expanded && i >= MAX_ROWS) r.classList.add('d-none');
             else r.classList.remove('d-none');
         });
+        tableContainer.style.maxHeight = expanded ? '80vh' : '400px';
     };
 });
 </script>
