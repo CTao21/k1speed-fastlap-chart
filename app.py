@@ -565,6 +565,11 @@ def track_detail(track_name):
     sessions, dates, bests, date_times = [], [], [], []
     for s in sorted(t.sessions, key=lambda x: x.date):
         lap_list = eval(s.lap_data or '[]')
+        is_challenge = (
+            (s.total_laps or 0) >= 14 and
+            s.date.day <= 7 and
+            s.date.weekday() in (6, 0)  # Sunday=6, Monday=0
+        )
         sessions.append({
             'id': s.id,
             'date': s.date.strftime('%Y-%m-%d %H:%M'),
@@ -572,7 +577,8 @@ def track_detail(track_name):
             'best_lap': f"{s.best_lap:.3f}",
             'avg_lap': f"{s.avg_lap:.3f}",
             'fastest_lap_num': s.fastest_lap_num,
-            'laps': lap_list
+            'laps': lap_list,
+            'challenge_gp': is_challenge
         })
         dates.append(s.date.strftime('%Y-%m-%d'))
         date_times.append(s.date.strftime('%Y-%m-%d %H:%M'))
@@ -662,7 +668,7 @@ def leaderboard():
     # Only include tracks with more than one session from consenting users
     rows = (
         db.session
-          .query(Track.display_name)
+          .query(Track.display_name, func.min(Track.raw_name))
           .join(Session)
           .join(User)
           .filter(User.leaderboard_consent == True)
@@ -671,7 +677,19 @@ def leaderboard():
           .order_by(Track.display_name)
           .all()
     )
-    tracks = [r[0] for r in rows]
+
+    tracks = []
+    for display, raw in rows:
+        raw_name = raw or display
+        image_file = track_image_filename(raw_name)
+        image_path = os.path.join(app.root_path, 'static', 'img', 'tracks', image_file)
+        tracks.append({
+            'display_name': display,
+            'raw_name': raw_name,
+            'image_file': image_file,
+            'has_image': os.path.exists(image_path)
+        })
+
     return render_template('leaderboard.html', tracks=tracks)
 
 
@@ -681,6 +699,9 @@ def leaderboard():
 def track_leaderboard(track_name):
     all_tracks    = Track.query.filter_by(display_name=track_name).all()
     best_laps, most_sessions = [], {}
+    image_file = track_image_filename(track_name)
+    image_path = os.path.join(app.root_path, 'static', 'img', 'tracks', image_file)
+    has_image = os.path.exists(image_path)
 
     for t in all_tracks:
         u = t.user
@@ -708,6 +729,8 @@ def track_leaderboard(track_name):
 
     return render_template('track_leaderboard.html',
                            track_name=track_name,
+                           image_file=image_file,
+                           has_image=has_image,
                            most_sessions=ms_list,
                            best_laps=bl_list)
 

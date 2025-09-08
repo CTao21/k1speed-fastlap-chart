@@ -3,6 +3,11 @@
 {% block content %}
 <div class="container mt-4">
     <div class="main-card">
+        {% if has_image %}
+        <img src="{{ url_for('static', filename='img/tracks/' ~ image_file) }}" class="track-card-img card-img-top mb-3" alt="{{ track_name }}">
+        {% else %}
+        <div class="track-card-placeholder card-img-top mb-3">🚧 Coming Soon 🚧</div>
+        {% endif %}
         <div class="card-header d-flex justify-content-between align-items-center">
             <h2>{{ track_name }} Leaderboard</h2>
             <a href="{{ url_for('leaderboard') }}" class="btn btn-outline-secondary">
