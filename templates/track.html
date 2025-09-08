@@ -84,7 +84,7 @@
                 </thead>
                 <tbody>
                     {% for s in sessions %}
-                    <tr>
+                    <tr class="{% if s.challenge_gp %}table-warning challenge-gp{% endif %}">
                         <td data-sort="{{ s.date }}"><a href="{{ url_for('race_detail', session_id=s.id) }}">{{ s.date }}</a></td>
                         <td>{{ "%.3f"|format(s.best_lap|float) }}</td>
                         <td>{{ "%.3f"|format(s.avg_lap|float) }}</td>
@@ -103,7 +103,9 @@
             </div>
             <div class="text-start mb-2">
               <button id="toggleRows" class="btn btn-outline-secondary btn-sm chart-btn">Show All</button>
+              <button id="challengeBtn" class="btn btn-outline-secondary btn-sm chart-btn ms-2">Show Potential Challenge GP</button>
             </div>
+            <div class="small text-muted">Highlighted sessions and filter mark potential Challenge GP races.</div>
           </div>
         </div>
     </div>
@@ -163,6 +165,10 @@
 
 .sort-button {
     width: 100%;
+}
+
+.challenge-gp {
+    font-weight: 600;
 }
 
 .chart-btn,
@@ -437,6 +443,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const MAX_ROWS = 10;
     const table = document.getElementById('lapsTable');
     const btnToggle = document.getElementById('toggleRows');
+    const challengeBtn = document.getElementById('challengeBtn');
     const tableContainer = document.querySelector('.table-container-ios');
     const rows = Array.from(table.tBodies[0].rows);
     if (rows.length > MAX_ROWS) {
@@ -455,6 +462,31 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     } else {
         btnToggle.style.display = 'none';
+    }
+
+    if (challengeBtn) {
+        challengeBtn.addEventListener('click', () => {
+            const filtered = challengeBtn.dataset.filtered === 'true';
+            const allRows = Array.from(table.tBodies[0].rows);
+            allRows.forEach(r => r.classList.remove('d-none'));
+            tableContainer.style.maxHeight = '80vh';
+            btnToggle.textContent = 'Show Less';
+            if (!filtered) {
+                allRows.forEach(r => {
+                    if (!r.classList.contains('challenge-gp')) {
+                        r.style.display = 'none';
+                    } else {
+                        r.style.display = '';
+                    }
+                });
+                challengeBtn.textContent = 'Show All Sessions';
+                challengeBtn.dataset.filtered = 'true';
+            } else {
+                allRows.forEach(r => r.style.display = '');
+                challengeBtn.textContent = 'Show Potential Challenge GP';
+                challengeBtn.dataset.filtered = 'false';
+            }
+        });
     }
     updateChart();
 
