@@ -3,32 +3,46 @@
 {% block content %}
 <div class="container mt-4">
   <div class="main-card wide-card">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-      <h2 class="mb-0">All Races</h2>
+    <div class="page-header race-archive-header mb-3">
+      <div>
+        <h1 class="page-title mb-1">Race Archive</h1>
+        <p class="page-subtitle mb-0">Review every session and keep tabs on your race packages.</p>
+      </div>
       <div class="d-flex flex-wrap align-items-center gap-2">
         <span class="badge text-bg-secondary">Total Races: {{ total_races }}</span>
         <a href="{{ url_for('results') }}" class="btn btn-outline-secondary btn-sm">Back to My Tracks</a>
       </div>
     </div>
 
-    <div class="purchase-card border rounded p-3 mb-3 bg-light">
-      <h6 class="mb-3">Race Purchase Tracker</h6>
-      <div class="row g-2 align-items-end">
-        <div class="col-sm-3">
-          <label for="purchaseRace" class="form-label small mb-1">Race number</label>
-          <input type="number" class="form-control form-control-sm" id="purchaseRace" min="1" max="{{ total_races }}" placeholder="e.g. 12">
-        </div>
-        <div class="col-sm-3">
-          <label for="purchaseCount" class="form-label small mb-1">Races purchased</label>
-          <input type="number" class="form-control form-control-sm" id="purchaseCount" min="1" placeholder="e.g. 3">
-        </div>
-        <div class="col-sm-6 d-flex flex-wrap gap-2">
-          <button type="button" class="btn btn-primary btn-sm chart-btn" id="addPurchase">Add Purchase</button>
-          <button type="button" class="btn btn-outline-secondary btn-sm chart-btn" id="clearPurchases">Clear</button>
+    <div class="purchase-card p-4 mb-4">
+      <div class="d-flex align-items-center mb-3">
+        <div class="purchase-icon me-2">🏁</div>
+        <div>
+          <h6 class="mb-1 text-uppercase">Race Purchase Tracker</h6>
+          <p class="text-muted small mb-0">Log the race packages you've bought so the remaining tally stays accurate.</p>
         </div>
       </div>
-      <div id="purchaseFeedback" class="small mt-2"></div>
-      <ul class="list-unstyled small mt-2 mb-0" id="purchaseList">
+      <div class="row g-3 align-items-end">
+        <div class="col-sm-4 col-lg-3">
+          <label for="purchaseCount" class="form-label fw-semibold">Number of Races Purchased</label>
+          <input type="number" class="form-control" id="purchaseCount" min="1" placeholder="e.g. 3">
+        </div>
+        <div class="col-sm-4 col-lg-3">
+          <label for="purchaseRace" class="form-label fw-semibold">Purchased After Race Number</label>
+          <input type="number" class="form-control" id="purchaseRace" min="1" max="{{ total_races }}" placeholder="e.g. 24">
+        </div>
+        <div class="col-sm-4 col-lg-6 d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-primary chart-btn" id="addPurchase">Add Purchase</button>
+          <button type="button" class="btn btn-outline-secondary chart-btn" id="clearPurchases">Clear</button>
+        </div>
+        <div class="col-12">
+          <div class="purchase-note">
+            <strong>Heads up:</strong> Import new races before updating this tracker. Adult Challenge GP packages contain <strong>3 races</strong>, while Junior and Teen packs include <strong>2 races</strong>.
+          </div>
+        </div>
+      </div>
+      <div id="purchaseFeedback" class="small mt-3"></div>
+      <ul class="list-unstyled small mt-3 mb-0" id="purchaseList">
         <li class="text-muted">No purchases recorded yet.</li>
       </ul>
     </div>
@@ -39,14 +53,14 @@
         <thead>
           <tr>
             <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(0)">Race # <span class="sort-icons">⇅</span></button></th>
-            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(1)">Date <span class="sort-icons">⇅</span></button></th>
-            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(2)">Track <span class="sort-icons">⇅</span></button></th>
-            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(3)">Best Lap <span class="sort-icons">⇅</span></button></th>
-            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(4)">Avg Lap <span class="sort-icons">⇅</span></button></th>
-            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(5)">Total Laps <span class="sort-icons">⇅</span></button></th>
-            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(6)">Fastest Lap # <span class="sort-icons">⇅</span></button></th>
-            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(7)">Kart # <span class="sort-icons">⇅</span></button></th>
-            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(8)">Races Remaining <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(1)">Races Remaining <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(2)">Date <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(3)">Track <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(4)">Best Lap <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(5)">Avg Lap <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(6)">Total Laps <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(7)">Fastest Lap # <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(8)">Kart # <span class="sort-icons">⇅</span></button></th>
             {% for i in range(1, 17) %}
             <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable({{ i + 8 }})">Lap {{ i }} <span class="sort-icons">⇅</span></button></th>
             {% endfor %}
@@ -61,6 +75,7 @@
               data-race-number="{{ s.race_number }}"
               data-session="{{ s.id }}">
             <td data-sort="{{ '%04d'|format(s.race_number) }}">{{ s.race_number }}</td>
+            <td class="remaining-cell"></td>
             <td data-sort="{{ s.date_iso }}"><a href="{{ url_for('race_detail', session_id=s.id) }}">{{ s.date_display }}</a></td>
             <td>{{ s.track_display }}</td>
             <td>{{ s.best_lap }}</td>
@@ -68,7 +83,6 @@
             <td>{{ s.total_laps }}</td>
             <td>{{ s.fastest_lap_num }}</td>
             <td><input type="text" class="form-control form-control-sm kart-input" placeholder="Kart #"></td>
-            <td class="remaining-cell"></td>
             {% for lap in s.laps %}
             <td>{{ "%.3f"|format(lap|float) }}</td>
             {% endfor %}
@@ -90,6 +104,67 @@
 </div>
 
 <style>
+.page-header {
+  background: linear-gradient(135deg, rgba(231, 76, 60, 0.12), rgba(231, 76, 60, 0.28));
+  border: 1px solid rgba(231, 76, 60, 0.25);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.page-title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.page-subtitle {
+  font-size: 0.9rem;
+}
+
+.race-archive-header .badge {
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.25);
+}
+
+.purchase-card {
+  background: linear-gradient(135deg, #fff5f4, #ffe8e3);
+  border: 1px solid rgba(231, 76, 60, 0.2);
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgba(231, 76, 60, 0.08);
+}
+
+.purchase-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.purchase-card label {
+  font-size: 0.95rem;
+}
+
+.purchase-card .form-control {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0.6rem 0.75rem;
+}
+
+.purchase-card .form-control:focus {
+  box-shadow: 0 0 0 0.25rem rgba(231, 76, 60, 0.15);
+  border-color: rgba(231, 76, 60, 0.45);
+}
+
+.purchase-note {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px dashed rgba(231, 76, 60, 0.4);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  color: #8b2f23;
+}
+
 .table-container-ios {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
@@ -148,10 +223,6 @@
 
 .kart-input {
   min-width: 80px;
-}
-
-.purchase-card {
-  background-color: #f8f9fa;
 }
 
 #purchaseList button {
@@ -449,7 +520,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const raceB = parseInt(b.dataset.raceNumber, 10) || 0;
         return (raceA - raceB) * dir;
       }
-      if (colIndex === 1) {
+      if (colIndex === 2) {
         const dateA = new Date(a.dataset.datetime);
         const dateB = new Date(b.dataset.datetime);
         return (dateA - dateB) * dir;
@@ -468,7 +539,12 @@ document.addEventListener('DOMContentLoaded', function () {
     applyFilters();
   };
 
-  applyFilters();
+  if (table && table.tBodies.length) {
+    sortDirections[2] = true;
+    window.sortTable(2);
+  } else {
+    applyFilters();
+  }
   renderPurchases();
   updateRemainingCells();
 });
