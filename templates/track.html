@@ -81,9 +81,9 @@
                         <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(0)">Date <span class="sort-icons">⇅</span></button></th>
                         <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(1)">Best Lap <span class="sort-icons">⇅</span></button></th>
                         <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(2)">Avg Lap <span class="sort-icons">⇅</span></button></th>
-                        <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(3)">Total Laps <span class="sort-icons">⇅</span></button></th>
-                        <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(4)">Fastest Lap # <span class="sort-icons">⇅</span></button></th>
-                        <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(5)">Kart # <span class="sort-icons">⇅</span></button></th>
+                        <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(3)">Kart # <span class="sort-icons">⇅</span></button></th>
+                        <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(4)">Total Laps <span class="sort-icons">⇅</span></button></th>
+                        <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(5)">Fastest Lap # <span class="sort-icons">⇅</span></button></th>
                         {% for i in range(1, 17) %}
                         <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable({{ i + 5 }})">Lap {{ i }} <span class="sort-icons">⇅</span></button></th>
                         {% endfor %}
@@ -99,9 +99,14 @@
                         <td data-sort="{{ s.date_iso }}"><a href="{{ url_for('race_detail', session_id=s.id) }}">{{ s.date_display }}</a></td>
                         <td>{{ s.best_lap }}</td>
                         <td>{{ s.avg_lap }}</td>
+                        <td>
+                          <div class="kart-entry">
+                            <input type="text" class="form-control form-control-sm kart-input" placeholder="Kart #">
+                            <button type="button" class="btn btn-secondary btn-sm kart-save-btn">Save</button>
+                          </div>
+                        </td>
                         <td>{{ s.total_laps }}</td>
                         <td>{{ s.fastest_lap_num }}</td>
-                        <td><input type="text" class="form-control form-control-sm kart-input" placeholder="Kart #"></td>
                         {% for lap in s.laps %}
                         <td>{{ "%.3f"|format(lap|float) }}</td>
                         {% endfor %}
@@ -121,7 +126,7 @@
             <div class="alert alert-info small py-2 px-3">
               <strong>Legend:</strong>
               <ul class="mb-0 ps-3">
-                <li><span class="badge bg-success me-1">Green rows</span> mark sessions that match the Challenge GP heuristic (14+ laps, run during the first week of a month on Sunday or Monday). Because this detection is based on timing only, treat them as potential events until you confirm with K1.</li>
+                <li><span class="badge bg-success me-1">Green rows</span> mark sessions that match the Challenge GP heuristic (14+ laps, run during the first week of a month on Sunday or Monday). Detection is date and lap count based, so races with laps added or deleted could get detected incorrectly.</li>
                 <li><span class="badge bg-warning text-dark me-1">Yellow rows</span> highlight sessions where your best lap was slower than the median pace + 7 seconds, which usually indicates a drift night.</li>
                 <li>Use the Drift Nights controls to quickly focus on or hide these sessions in both the chart and the table.</li>
               </ul>
@@ -197,6 +202,16 @@
 
 .kart-input {
     min-width: 80px;
+}
+
+.kart-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.kart-entry .kart-save-btn {
+    white-space: nowrap;
 }
 
 .chart-btn,
@@ -288,6 +303,18 @@ document.addEventListener("DOMContentLoaded", function () {
         window.dispatchEvent(event);
     }
 
+    function persistKartAssignment(sessionId, value) {
+        const trimmedValue = value.trim();
+        if (trimmedValue) {
+            kartAssignments[sessionId] = trimmedValue;
+        } else {
+            delete kartAssignments[sessionId];
+        }
+        saveKartAssignments();
+        refreshKartInputs();
+        broadcastKartUpdate(sessionId, trimmedValue);
+    }
+
     if (table && table.tBodies.length) {
         const rows = Array.from(table.tBodies[0].rows);
         rows.forEach(row => {
@@ -295,20 +322,21 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!sessionId) return;
             const input = row.querySelector('.kart-input');
             if (!input) return;
+            const saveButton = row.querySelector('.kart-save-btn');
             const storedValue = kartAssignments[sessionId];
             if (storedValue) {
                 input.value = storedValue;
             }
-            input.addEventListener('input', (event) => {
-                const value = event.target.value.trim();
-                if (value) {
-                    kartAssignments[sessionId] = value;
-                } else {
-                    delete kartAssignments[sessionId];
+            if (saveButton) {
+                saveButton.addEventListener('click', () => {
+                    persistKartAssignment(sessionId, input.value);
+                });
+            }
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    persistKartAssignment(sessionId, input.value);
                 }
-                saveKartAssignments();
-                refreshKartInputs();
-                broadcastKartUpdate(sessionId, value);
             });
         });
     }
