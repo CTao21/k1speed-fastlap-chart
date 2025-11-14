@@ -570,23 +570,35 @@ def track_detail(track_name):
             s.date.day <= 7 and
             s.date.weekday() in (6, 0)  # Sunday=6, Monday=0
         )
-        sessions.append({
+        session_dict = {
             'id': s.id,
-            'date': s.date.strftime('%Y-%m-%d %H:%M'),
+            'date_display': s.date.strftime('%Y-%m-%d %H:%M'),
+            'date_iso': s.date.isoformat(),
+            'date_only': s.date.strftime('%Y-%m-%d'),
             'total_laps': s.total_laps,
             'best_lap': f"{s.best_lap:.3f}",
+            'best_lap_value': s.best_lap,
             'avg_lap': f"{s.avg_lap:.3f}",
+            'avg_lap_value': s.avg_lap,
             'fastest_lap_num': s.fastest_lap_num,
             'laps': lap_list,
             'challenge_gp': is_challenge
-        })
+        }
+        sessions.append(session_dict)
         dates.append(s.date.strftime('%Y-%m-%d'))
-        date_times.append(s.date.strftime('%Y-%m-%d %H:%M'))
+        date_times.append(s.date.isoformat())
         bests.append(s.best_lap)
 
     drift_cutoff = 0
     if bests:
         drift_cutoff = statistics.median(bests) + 7
+
+    if drift_cutoff:
+        for sess in sessions:
+            sess['drift_night'] = sess['best_lap_value'] >= drift_cutoff
+    else:
+        for sess in sessions:
+            sess['drift_night'] = False
 
     improvement_dates, improvement_laps = [], []
     best_so_far = float('inf')
@@ -633,6 +645,60 @@ def race_detail(session_id):
         username=race_session.track.user.username
     )
 
+
+
+@app.route('/results/all-races')
+def all_races():
+    if 'email' not in session:
+        return redirect(url_for('imap_login'))
+
+    user = User.query.filter_by(email=session['email']).first()
+    if not user:
+        return redirect(url_for('imap_login'))
+
+    combined_sessions = []
+    for track in user.tracks:
+        track_sessions = sorted(track.sessions, key=lambda s: s.date)
+        if not track_sessions:
+            continue
+        bests = [s.best_lap for s in track_sessions]
+        drift_cutoff = statistics.median(bests) + 7 if bests else None
+        for s in track_sessions:
+            lap_list = eval(s.lap_data or '[]')
+            is_challenge = (
+                (s.total_laps or 0) >= 14 and
+                s.date.day <= 7 and
+                s.date.weekday() in (6, 0)
+            )
+            is_drift = drift_cutoff is not None and s.best_lap >= drift_cutoff
+            combined_sessions.append({
+                'id': s.id,
+                'race_number': 0,
+                'track_display': track.display_name,
+                'track_raw': track.raw_name,
+                'date_display': s.date.strftime('%Y-%m-%d %H:%M'),
+                'date_iso': s.date.isoformat(),
+                'total_laps': s.total_laps,
+                'best_lap': f"{s.best_lap:.3f}",
+                'best_lap_value': s.best_lap,
+                'avg_lap': f"{s.avg_lap:.3f}",
+                'avg_lap_value': s.avg_lap,
+                'fastest_lap_num': s.fastest_lap_num,
+                'laps': lap_list,
+                'challenge_gp': is_challenge,
+                'drift_night': is_drift
+            })
+
+    combined_sessions.sort(key=lambda x: x['date_iso'])
+    for idx, sess in enumerate(combined_sessions, start=1):
+        sess['race_number'] = idx
+
+    return render_template(
+        'all_races.html',
+        username=user.username,
+        sessions=combined_sessions,
+        total_races=len(combined_sessions)
+    )
 
 
 @app.route('/download/<track_name>.csv')

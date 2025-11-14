@@ -41,9 +41,15 @@
                     <label for="toDate" class="form-label me-1">To:</label>
                     <input type="date" id="toDate" class="form-control form-control-sm d-inline w-auto" placeholder="mm/dd/yyyy">
                 </div>
-                <div class="form-check ms-2">
-                    <input class="form-check-input" type="checkbox" id="driftToggle">
-                    <label class="form-check-label" for="driftToggle">Hide Likely Drift Nights</label>
+                <div>
+                    <label for="driftFilter" class="form-label me-2">Drift Nights:</label>
+                    <select id="driftFilter" class="form-select form-select-sm d-inline w-auto">
+                        <option value="all" selected>Show All</option>
+                        <option value="hide">Hide Drift Nights</option>
+                        <option value="hide_after">Hide Drift + After</option>
+                        <option value="only">Only Drift Nights</option>
+                        <option value="only_after">Drift Nights + After</option>
+                    </select>
                 </div>
             </div>
 
@@ -59,8 +65,8 @@
             </div>
             <div id="driftInfo" class="text-muted small"></div>
             <div id="driftAfterDiv" class="small mt-1" style="display:none;">
-                Filter normal races during/after drift nights for
-                <input type="number" id="driftDays" value="1" min="0" class="form-control form-control-sm d-inline w-auto ms-1 me-1">days
+                Include sessions within
+                <input type="number" id="driftDays" value="1" min="0" class="form-control form-control-sm d-inline w-auto ms-1 me-1">days after drift nights
                 <button id="applyDriftFilter" class="btn btn-outline-secondary btn-sm chart-btn">Apply</button>
             </div>
           </div>
@@ -77,19 +83,24 @@
                         <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(2)">Avg Lap <span class="sort-icons">⇅</span></button></th>
                         <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(3)">Total Laps <span class="sort-icons">⇅</span></button></th>
                         <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(4)">Fastest Lap # <span class="sort-icons">⇅</span></button></th>
+                        <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(5)">Kart # <span class="sort-icons">⇅</span></button></th>
                         {% for i in range(1, 17) %}
-                        <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable({{ i + 4 }})">Lap {{ i }} <span class="sort-icons">⇅</span></button></th>
+                        <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable({{ i + 5 }})">Lap {{ i }} <span class="sort-icons">⇅</span></button></th>
                         {% endfor %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for s in sessions %}
-                    <tr class="{% if s.challenge_gp %}table-warning challenge-gp{% endif %}">
-                        <td data-sort="{{ s.date }}"><a href="{{ url_for('race_detail', session_id=s.id) }}">{{ s.date }}</a></td>
-                        <td>{{ "%.3f"|format(s.best_lap|float) }}</td>
-                        <td>{{ "%.3f"|format(s.avg_lap|float) }}</td>
+                    <tr class="{% if s.challenge_gp %}table-success challenge-gp{% elif s.drift_night %}table-warning drift-night{% endif %}"
+                        data-challenge="{{ 'true' if s.challenge_gp else 'false' }}"
+                        data-drift="{{ 'true' if s.drift_night else 'false' }}"
+                        data-datetime="{{ s.date_iso }}">
+                        <td data-sort="{{ s.date_iso }}"><a href="{{ url_for('race_detail', session_id=s.id) }}">{{ s.date_display }}</a></td>
+                        <td>{{ s.best_lap }}</td>
+                        <td>{{ s.avg_lap }}</td>
                         <td>{{ s.total_laps }}</td>
                         <td>{{ s.fastest_lap_num }}</td>
+                        <td><input type="text" class="form-control form-control-sm kart-input" placeholder="Kart #"></td>
                         {% for lap in s.laps %}
                         <td>{{ "%.3f"|format(lap|float) }}</td>
                         {% endfor %}
@@ -171,6 +182,14 @@
     font-weight: 600;
 }
 
+.drift-night {
+    font-weight: 600;
+}
+
+.kart-input {
+    min-width: 80px;
+}
+
 .chart-btn,
 .sort-button {
     background-color: #e74c3c;
@@ -186,79 +205,32 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const ctx = document.getElementById('progressChart');
-    if (!ctx) return;
-
     const labels = {{ chart_data.dates | tojson }};
     const times = {{ chart_data.date_times | tojson }};
     const data = {{ chart_data.best_laps | tojson }};
     const driftCutoff = {{ chart_data.drift_cutoff | tojson }};
-    const driftFlags = data.map(v => v >= driftCutoff);
+
+    const ctx = document.getElementById('progressChart');
+    const driftFilterSelect = document.getElementById('driftFilter');
+    const driftDaysInput = document.getElementById('driftDays');
+    const driftInfo = document.getElementById('driftInfo');
+    const driftAfterDiv = document.getElementById('driftAfterDiv');
+    const applyBtn = document.getElementById('applyDriftFilter');
+    const resetZoomBtn = document.getElementById('resetZoom');
+
+    const table = document.getElementById('lapsTable');
+    const tableContainer = document.querySelector('.table-container-ios');
+    const btnToggle = document.getElementById('toggleRows');
+    const challengeBtn = document.getElementById('challengeBtn');
+
+    const MAX_ROWS = 10;
+    const driftFlags = data.map(v => driftCutoff ? v >= driftCutoff : false);
     let filteredLabels = labels.slice();
     let filteredData = data.slice();
     let filteredTimes = times.slice();
-
-    let afterDriftDays = 0;
-
-    const improvementLabels = [];
-    const improvementData = [];
-    let bestSoFar = Infinity;
-    for (let i = 0; i < labels.length; i++) {
-        const lap = data[i];
-        if (lap < bestSoFar) {
-            bestSoFar = lap;
-            improvementLabels.push(labels[i]);
-            improvementData.push(lap);
-        }
-    }
-
-    window.chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Best Lap',
-                data: data,
-                borderColor: 'rgb(75, 192, 192)',
-                tension: 0.1,
-                pointBackgroundColor: 'rgb(75, 192, 192)',
-                fill: false
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'nearest',
-                axis: 'x',
-                intersect: false
-            },
-            plugins: {
-                tooltip: { enabled: true },
-                legend: { display: false },
-                zoom: {
-                    pan: { enabled: true, mode: 'x' },
-                    zoom: {
-                        wheel: { enabled: true },
-                        pinch: { enabled: true },
-                        mode: 'x'
-                    }
-                },
-                datalabels: { display: false }
-            },
-            scales: {
-                y: {
-                    reverse: true,
-                    title: { display: true, text: 'Seconds' },
-                    ticks: { color: '#000', stepSize: 0.25, maxTicksLimit: 15 }
-                },
-                x: {
-                    title: { display: true, text: 'Date' },
-                    ticks: { color: '#000' }
-                }
-            }
-        }
-    });
+    let showAllRows = false;
+    let challengeOnly = false;
+    let sortDirections = [];
 
     function getWeek(dateStr) {
         const [y, m, d] = dateStr.split('-').map(Number);
@@ -266,6 +238,99 @@ document.addEventListener("DOMContentLoaded", function () {
         dt.setUTCDate(dt.getUTCDate() + 4 - (dt.getUTCDay() || 7));
         const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
         return Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
+    }
+
+    function getAfterRanges(afterDays) {
+        const ranges = [];
+        if (afterDays <= 0) {
+            return ranges;
+        }
+        driftFlags.forEach((flag, idx) => {
+            if (!flag) return;
+            const base = new Date(times[idx]);
+            if (Number.isNaN(base.getTime())) return;
+            const start = new Date(base);
+            start.setHours(16, 0, 0, 0);
+            const end = new Date(start);
+            end.setDate(end.getDate() + afterDays - 1);
+            end.setHours(23, 59, 59, 999);
+            ranges.push({ start, end });
+        });
+        return ranges;
+    }
+
+    function isWithinRanges(date, ranges) {
+        if (!date || !ranges.length) return false;
+        return ranges.some(range => date >= range.start && date <= range.end);
+    }
+
+    function shouldInclude(mode, isDrift, isAfter) {
+        if (mode === 'hide') return !isDrift;
+        if (mode === 'hide_after') {
+            if (isDrift) return false;
+            if (isAfter) return false;
+            return true;
+        }
+        if (mode === 'only') return isDrift;
+        if (mode === 'only_after') return isDrift || isAfter;
+        return true;
+    }
+
+    function getCellValue(row, colIndex) {
+        const cell = row.cells[colIndex];
+        if (!cell) return '';
+        const input = cell.querySelector('input');
+        if (input) return input.value.trim();
+        if (cell.dataset && cell.dataset.sort) return cell.dataset.sort;
+        return cell.innerText.trim();
+    }
+
+    function applyRowPaging() {
+        if (!table || !tableContainer || !btnToggle) return;
+        const visibleRows = Array.from(table.tBodies[0].rows).filter(row => row.style.display !== 'none');
+        if (visibleRows.length <= MAX_ROWS) {
+            visibleRows.forEach(row => row.classList.remove('d-none'));
+            tableContainer.style.maxHeight = '400px';
+            btnToggle.style.display = 'none';
+            showAllRows = false;
+            return;
+        }
+        btnToggle.style.display = '';
+        if (showAllRows) {
+            visibleRows.forEach(row => row.classList.remove('d-none'));
+            tableContainer.style.maxHeight = '80vh';
+            btnToggle.textContent = 'Show Less';
+        } else {
+            visibleRows.forEach((row, index) => {
+                if (index >= MAX_ROWS) row.classList.add('d-none');
+                else row.classList.remove('d-none');
+            });
+            tableContainer.style.maxHeight = '400px';
+            btnToggle.textContent = 'Show All';
+        }
+    }
+
+    function applyTableFilters() {
+        if (!table) return;
+    const mode = driftFilterSelect ? driftFilterSelect.value : 'all';
+    const afterDaysValue = driftDaysInput ? (parseInt(driftDaysInput.value, 10) || 0) : 0;
+        const includeAfter = (mode === 'hide_after' || mode === 'only_after') && afterDaysValue > 0;
+        const afterRanges = includeAfter ? getAfterRanges(afterDaysValue) : [];
+        const rows = Array.from(table.tBodies[0].rows);
+        rows.forEach(row => {
+            row.classList.remove('d-none');
+            const isChallenge = row.dataset.challenge === 'true';
+            const isDrift = row.dataset.drift === 'true';
+            const dateIso = row.dataset.datetime;
+            const rowDate = dateIso ? new Date(dateIso) : null;
+            const isAfter = includeAfter && rowDate ? isWithinRanges(rowDate, afterRanges) : false;
+            let visible = shouldInclude(mode, isDrift, isAfter);
+            if (challengeOnly && !isChallenge) {
+                visible = false;
+            }
+            row.style.display = visible ? '' : 'none';
+        });
+        applyRowPaging();
     }
 
     function filterByTimeRange(range) {
@@ -296,9 +361,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                     return acc;
                 }, { labels: [], data: [], times: [], indices: [] });
-            } else {
-                return { labels: [], data: [], times: [], indices: [] };
             }
+            return { labels: [], data: [], times: [], indices: [] };
         }
 
         return labels.reduce((acc, dateStr, i) => {
@@ -313,8 +377,62 @@ document.addEventListener("DOMContentLoaded", function () {
         }, { labels: [], data: [], times: [], indices: [] });
     }
 
+    let chart = null;
+    if (ctx && window.Chart) {
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Best Lap',
+                    data: data,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1,
+                    pointBackgroundColor: 'rgb(75, 192, 192)',
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                },
+                plugins: {
+                    tooltip: { enabled: true },
+                    legend: { display: false },
+                    zoom: {
+                        pan: { enabled: true, mode: 'x' },
+                        zoom: {
+                            wheel: { enabled: true },
+                            pinch: { enabled: true },
+                            mode: 'x'
+                        }
+                    },
+                    datalabels: { display: false }
+                },
+                scales: {
+                    y: {
+                        reverse: true,
+                        title: { display: true, text: 'Seconds' },
+                        ticks: { color: '#000', stepSize: 0.25, maxTicksLimit: 15 }
+                    },
+                    x: {
+                        title: { display: true, text: 'Date' },
+                        ticks: { color: '#000' }
+                    }
+                }
+            }
+        });
+        window.chart = chart;
+    }
+
     function updateChart() {
-        chart.resetZoom();
+        if (chart) {
+            chart.resetZoom();
+        }
         const viewMode = document.getElementById('timeFilter').value;
         const timeRange = document.getElementById('rangeFilter').value;
         const result = filterByTimeRange(timeRange);
@@ -324,202 +442,192 @@ document.addEventListener("DOMContentLoaded", function () {
         filteredTimes = result.times;
         let indices = result.indices;
 
-        const driftAfterDiv = document.getElementById('driftAfterDiv');
+        const mode = driftFilterSelect ? driftFilterSelect.value : 'all';
+        const afterDaysValue = driftDaysInput ? (parseInt(driftDaysInput.value, 10) || 0) : 0;
+        const includeAfter = (mode === 'hide_after' || mode === 'only_after') && afterDaysValue > 0;
+        const afterRanges = includeAfter ? getAfterRanges(afterDaysValue) : [];
 
-        if (document.getElementById('driftToggle').checked) {
-            let removed = 0;
-            let removedDates = [];
-            let driftTimes = [];
-            let tmpLabels = [], tmpData = [], tmpTimes = [], tmpIndices = [];
-            for (let i = 0; i < filteredLabels.length; i++) {
-                if (driftFlags[indices[i]]) {
-                    removed++;
-                    removedDates.push(filteredLabels[i]);
-                    driftTimes.push(new Date(times[indices[i]]));
-                } else {
-                    tmpLabels.push(filteredLabels[i]);
-                    tmpData.push(filteredData[i]);
-                    tmpTimes.push(filteredTimes[i]);
-                    tmpIndices.push(indices[i]);
-                }
+        const tmpLabels = [];
+        const tmpData = [];
+        const tmpTimes = [];
+        const tmpIndices = [];
+        let removedDrift = 0;
+        let removedAfter = 0;
+        let shownDrift = 0;
+        let shownAfter = 0;
+        let totalDrift = 0;
+
+        for (let i = 0; i < filteredLabels.length; i++) {
+            const idx = indices[i];
+            const isDrift = driftFlags[idx];
+            const dateValue = new Date(times[idx]);
+            const isAfter = includeAfter && isWithinRanges(dateValue, afterRanges);
+            if (isDrift) totalDrift++;
+            const include = shouldInclude(mode, isDrift, isAfter);
+            if (!include) {
+                if (isDrift) removedDrift++;
+                else if (isAfter) removedAfter++;
+                continue;
             }
-            filteredLabels = tmpLabels;
-            filteredData = tmpData;
-            filteredTimes = tmpTimes;
-            indices = tmpIndices;
-            const uniqueDates = [...new Set(removedDates.map(d => d.split(' ')[0]))];
-            document.getElementById('driftInfo').textContent =
-                `Filtered ${removed} sessions on ${uniqueDates.length} drift nights. ` + uniqueDates.join(', ');
-            driftAfterDiv.style.display = uniqueDates.length ? 'block' : 'none';
+            if (isDrift) shownDrift++;
+            else if (isAfter) shownAfter++;
+            tmpLabels.push(filteredLabels[i]);
+            tmpData.push(filteredData[i]);
+            tmpTimes.push(filteredTimes[i]);
+            tmpIndices.push(idx);
+        }
 
-            if (afterDriftDays > 0 && driftTimes.length) {
-                let tmpL = [], tmpD = [], tmpT = [], tmpI = [];
-                let removedAfter = 0;
+        filteredLabels = tmpLabels;
+        filteredData = tmpData;
+        filteredTimes = tmpTimes;
+        indices = tmpIndices;
+
+        if (chart) {
+            let labelsForChart = filteredLabels;
+            let dataset = filteredData;
+
+            if (viewMode === 'improvement') {
+                let impLabels = [];
+                let impData = [];
+                let best = Infinity;
                 for (let i = 0; i < filteredLabels.length; i++) {
-                    const dt = new Date(filteredTimes[i]);
-                    let exclude = false;
-                    for (const start of driftTimes) {
-                        const start4 = new Date(start);
-                        start4.setHours(16,0,0,0);
-                        const end = new Date(start4);
-                        end.setDate(end.getDate() + afterDriftDays - 1);
-                        end.setHours(23,59,59,999);
-                        if (dt >= start4 && dt <= end) { exclude = true; break; }
-                    }
-                    if (exclude) {
-                        removedAfter++;
-                    } else {
-                        tmpL.push(filteredLabels[i]);
-                        tmpD.push(filteredData[i]);
-                        tmpT.push(filteredTimes[i]);
-                        tmpI.push(indices[i]);
+                    const lap = filteredData[i];
+                    if (lap < best) {
+                        best = lap;
+                        impLabels.push(filteredLabels[i]);
+                        impData.push(lap);
                     }
                 }
-                filteredLabels = tmpL;
-                filteredData = tmpD;
-                filteredTimes = tmpT;
-                indices = tmpI;
-                if (removedAfter)
-                    document.getElementById('driftInfo').textContent += ` Filtered ${removedAfter} more sessions after drift nights.`;
+                labelsForChart = impLabels;
+                dataset = impData;
+            } else if (["daily", "weekly", "monthly"].includes(viewMode)) {
+                let grouped = {};
+                for (let i = 0; i < filteredLabels.length; i++) {
+                    let key = filteredLabels[i];
+                    if (viewMode === 'monthly') key = key.slice(0, 7);
+                    else if (viewMode === 'weekly') key = key.slice(0, 4) + '-W' + getWeek(key);
+                    if (!(key in grouped) || grouped[key] > filteredData[i]) {
+                        grouped[key] = filteredData[i];
+                    }
+                }
+                labelsForChart = Object.keys(grouped);
+                dataset = Object.values(grouped);
             }
-        } else {
-            document.getElementById('driftInfo').textContent = '';
-            driftAfterDiv.style.display = 'none';
+
+            chart.data.labels = labelsForChart;
+            chart.data.datasets[0].data = dataset;
+            chart.update();
         }
 
-        if (viewMode === 'improvement') {
-            let impLabels = [];
-            let impData = [];
-            let best = Infinity;
-            for (let i = 0; i < filteredLabels.length; i++) {
-                const lap = filteredData[i];
-                if (lap < best) {
-                    best = lap;
-                    impLabels.push(filteredLabels[i]);
-                    impData.push(lap);
-                }
+        let infoText = '';
+        if (!driftCutoff) {
+            infoText = '';
+        } else if (mode === 'hide') {
+            infoText = `Filtered ${removedDrift} drift sessions.`;
+        } else if (mode === 'hide_after') {
+            infoText = `Filtered ${removedDrift} drift sessions.`;
+            if (includeAfter) {
+                infoText += ` Filtered ${removedAfter} sessions within ${afterDaysValue} day${afterDaysValue === 1 ? '' : 's'} after drift nights.`;
             }
-            chart.data.labels = impLabels;
-            chart.data.datasets[0].data = impData;
-        } else if (["daily", "weekly", "monthly"].includes(viewMode)) {
-            let grouped = {};
-            for (let i = 0; i < filteredLabels.length; i++) {
-                let key = filteredLabels[i];
-                if (viewMode === 'monthly') key = key.slice(0, 7);
-                else if (viewMode === 'weekly') key = key.slice(0, 4) + '-W' + getWeek(key);
-                if (!(key in grouped) || grouped[key] > filteredData[i]) {
-                    grouped[key] = filteredData[i];
-                }
+        } else if (mode === 'only') {
+            infoText = `Showing ${shownDrift} drift sessions.`;
+        } else if (mode === 'only_after') {
+            infoText = `Showing ${shownDrift} drift sessions.`;
+            if (includeAfter) {
+                infoText += ` Including ${shownAfter} additional sessions within ${afterDaysValue} day${afterDaysValue === 1 ? '' : 's'} after drift nights.`;
             }
-            chart.data.labels = Object.keys(grouped);
-            chart.data.datasets[0].data = Object.values(grouped);
         } else {
-            chart.data.labels = filteredLabels;
-            chart.data.datasets[0].data = filteredData;
+            infoText = `Detected ${totalDrift} likely drift sessions (threshold ${driftCutoff.toFixed(3)}s).`;
         }
-        chart.update();
+        if (driftInfo) {
+            driftInfo.textContent = infoText;
+        }
+
+        if (driftAfterDiv) {
+            if (mode === 'hide_after' || mode === 'only_after') {
+                driftAfterDiv.style.display = 'block';
+            } else {
+                driftAfterDiv.style.display = 'none';
+            }
+        }
+
+        applyTableFilters();
     }
 
-    document.getElementById('timeFilter').addEventListener('change', updateChart);
-    document.getElementById('rangeFilter').addEventListener('change', function () {
-        const selected = this.value;
-        document.getElementById('customRangeInputs').style.display = (selected === 'custom') ? 'block' : 'none';
-        updateChart();
-    });
-    document.getElementById('fromDate').addEventListener('change', updateChart);
-    document.getElementById('toDate').addEventListener('change', updateChart);
-    document.getElementById('resetZoom').addEventListener('click', () => {
-        chart.resetZoom();
-    });
-    document.getElementById('driftToggle').addEventListener('change', updateChart);
-    const applyBtn = document.getElementById('applyDriftFilter');
+    const timeFilter = document.getElementById('timeFilter');
+    const rangeFilter = document.getElementById('rangeFilter');
+    const fromDateInput = document.getElementById('fromDate');
+    const toDateInput = document.getElementById('toDate');
+
+    if (timeFilter) timeFilter.addEventListener('change', updateChart);
+    if (rangeFilter) {
+        rangeFilter.addEventListener('change', function () {
+            const selected = this.value;
+            document.getElementById('customRangeInputs').style.display = (selected === 'custom') ? 'block' : 'none';
+            updateChart();
+        });
+    }
+    if (fromDateInput) fromDateInput.addEventListener('change', updateChart);
+    if (toDateInput) toDateInput.addEventListener('change', updateChart);
+    if (resetZoomBtn && chart) {
+        resetZoomBtn.addEventListener('click', () => chart.resetZoom());
+    } else if (resetZoomBtn) {
+        resetZoomBtn.addEventListener('click', () => {});
+    }
+
+    if (driftFilterSelect) {
+        driftFilterSelect.addEventListener('change', updateChart);
+    }
     if (applyBtn) {
         applyBtn.addEventListener('click', () => {
-            afterDriftDays = parseInt(document.getElementById('driftDays').value) || 0;
             updateChart();
         });
     }
 
-    const MAX_ROWS = 10;
-    const table = document.getElementById('lapsTable');
-    const btnToggle = document.getElementById('toggleRows');
-    const challengeBtn = document.getElementById('challengeBtn');
-    const tableContainer = document.querySelector('.table-container-ios');
-    const rows = Array.from(table.tBodies[0].rows);
-    if (rows.length > MAX_ROWS) {
-        rows.slice(MAX_ROWS).forEach(r => r.classList.add('d-none'));
+    if (btnToggle) {
         btnToggle.addEventListener('click', () => {
-            const hidden = table.querySelectorAll('tbody tr.d-none');
-            if (hidden.length) {
-                hidden.forEach(r => r.classList.remove('d-none'));
-                btnToggle.textContent = 'Show Less';
-                tableContainer.style.maxHeight = '80vh';
-            } else {
-                rows.slice(MAX_ROWS).forEach(r => r.classList.add('d-none'));
-                btnToggle.textContent = 'Show All';
-                tableContainer.style.maxHeight = '400px';
-            }
+            showAllRows = !showAllRows;
+            applyRowPaging();
         });
-    } else {
-        btnToggle.style.display = 'none';
     }
 
     if (challengeBtn) {
         challengeBtn.addEventListener('click', () => {
-            const filtered = challengeBtn.dataset.filtered === 'true';
-            const allRows = Array.from(table.tBodies[0].rows);
-            allRows.forEach(r => r.classList.remove('d-none'));
-            tableContainer.style.maxHeight = '80vh';
-            btnToggle.textContent = 'Show Less';
-            if (!filtered) {
-                allRows.forEach(r => {
-                    if (!r.classList.contains('challenge-gp')) {
-                        r.style.display = 'none';
-                    } else {
-                        r.style.display = '';
-                    }
-                });
-                challengeBtn.textContent = 'Show All Sessions';
-                challengeBtn.dataset.filtered = 'true';
-            } else {
-                allRows.forEach(r => r.style.display = '');
-                challengeBtn.textContent = 'Show Potential Challenge GP';
-                challengeBtn.dataset.filtered = 'false';
-            }
+            challengeOnly = !challengeOnly;
+            challengeBtn.textContent = challengeOnly ? 'Show All Sessions' : 'Show Potential Challenge GP';
+            challengeBtn.dataset.filtered = challengeOnly ? 'true' : 'false';
+            applyTableFilters();
         });
     }
-    updateChart();
 
-    let sortDirections = [];
     window.sortTable = function (colIndex) {
-        const table = document.getElementById("lapsTable");
+        if (!table) return;
         const tbody = table.tBodies[0];
         const rows = Array.from(tbody.rows);
         sortDirections[colIndex] = !sortDirections[colIndex];
         const dir = sortDirections[colIndex] ? 1 : -1;
 
         rows.sort((a, b) => {
-            let A = a.cells[colIndex]?.innerText.trim() || "";
-            let B = b.cells[colIndex]?.innerText.trim() || "";
             if (colIndex === 0) {
-                const dateA = new Date(A);
-                const dateB = new Date(B);
+                const dateA = new Date(a.dataset.datetime);
+                const dateB = new Date(b.dataset.datetime);
                 return (dateA - dateB) * dir;
             }
-            let nA = parseFloat(A), nB = parseFloat(B);
-            if (!isNaN(nA) && !isNaN(nB)) return (nA - nB) * dir;
-            return A.localeCompare(B) * dir;
+            const valueA = getCellValue(a, colIndex);
+            const valueB = getCellValue(b, colIndex);
+            const numA = parseFloat(valueA);
+            const numB = parseFloat(valueB);
+            if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
+                return (numA - numB) * dir;
+            }
+            return valueA.localeCompare(valueB) * dir;
         });
 
-        rows.forEach(r => tbody.appendChild(r));
-
-        const expanded = btnToggle.textContent === 'Show Less';
-        rows.forEach((r, i) => {
-            if (!expanded && i >= MAX_ROWS) r.classList.add('d-none');
-            else r.classList.remove('d-none');
-        });
-        tableContainer.style.maxHeight = expanded ? '80vh' : '400px';
+        rows.forEach(row => tbody.appendChild(row));
+        applyTableFilters();
     };
+
+    updateChart();
 });
 </script>
 {% endblock %}

@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="main-card wide-card">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+      <h2 class="mb-0">All Races</h2>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="badge text-bg-secondary">Total Races: {{ total_races }}</span>
+        <a href="{{ url_for('results') }}" class="btn btn-outline-secondary btn-sm">Back to My Tracks</a>
+      </div>
+    </div>
+
+    <div class="purchase-card border rounded p-3 mb-3 bg-light">
+      <h6 class="mb-3">Race Purchase Tracker</h6>
+      <div class="row g-2 align-items-end">
+        <div class="col-sm-3">
+          <label for="purchaseRace" class="form-label small mb-1">Race number</label>
+          <input type="number" class="form-control form-control-sm" id="purchaseRace" min="1" max="{{ total_races }}" placeholder="e.g. 12">
+        </div>
+        <div class="col-sm-3">
+          <label for="purchaseCount" class="form-label small mb-1">Races purchased</label>
+          <input type="number" class="form-control form-control-sm" id="purchaseCount" min="1" placeholder="e.g. 3">
+        </div>
+        <div class="col-sm-6 d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-primary btn-sm chart-btn" id="addPurchase">Add Purchase</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm chart-btn" id="clearPurchases">Clear</button>
+        </div>
+      </div>
+      <div id="purchaseFeedback" class="small mt-2"></div>
+      <ul class="list-unstyled small mt-2 mb-0" id="purchaseList">
+        <li class="text-muted">No purchases recorded yet.</li>
+      </ul>
+    </div>
+
+    <div class="small text-muted mb-1">Click any column header to sort. Challenge GP races are highlighted in green.</div>
+    <div class="table-container-ios">
+      <table id="allRacesTable" class="table table-striped">
+        <thead>
+          <tr>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(0)">Race # <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(1)">Date <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(2)">Track <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(3)">Best Lap <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(4)">Avg Lap <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(5)">Total Laps <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(6)">Fastest Lap # <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(7)">Kart # <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(8)">Races Remaining <span class="sort-icons">⇅</span></button></th>
+            {% for i in range(1, 17) %}
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable({{ i + 8 }})">Lap {{ i }} <span class="sort-icons">⇅</span></button></th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sessions %}
+          <tr class="{% if s.challenge_gp %}table-success challenge-gp{% elif s.drift_night %}table-warning drift-night{% endif %}"
+              data-challenge="{{ 'true' if s.challenge_gp else 'false' }}"
+              data-datetime="{{ s.date_iso }}"
+              data-race-number="{{ s.race_number }}">
+            <td data-sort="{{ '%04d'|format(s.race_number) }}">{{ s.race_number }}</td>
+            <td data-sort="{{ s.date_iso }}"><a href="{{ url_for('race_detail', session_id=s.id) }}">{{ s.date_display }}</a></td>
+            <td>{{ s.track_display }}</td>
+            <td>{{ s.best_lap }}</td>
+            <td>{{ s.avg_lap }}</td>
+            <td>{{ s.total_laps }}</td>
+            <td>{{ s.fastest_lap_num }}</td>
+            <td><input type="text" class="form-control form-control-sm kart-input" placeholder="Kart #"></td>
+            <td class="remaining-cell"></td>
+            {% for lap in s.laps %}
+            <td>{{ "%.3f"|format(lap|float) }}</td>
+            {% endfor %}
+            {% for i in range(16 - s.laps|length) %}
+            <td></td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="text-start mt-2 mb-2">
+      <button id="toggleRows" class="btn btn-outline-secondary btn-sm chart-btn">Show All</button>
+      <button id="challengeBtn" class="btn btn-outline-secondary btn-sm chart-btn ms-2">Show Potential Challenge GP</button>
+    </div>
+    <div class="small text-muted">Green rows highlight potential Challenge GP races. Yellow rows indicate likely drift nights.</div>
+  </div>
+</div>
+
+<style>
+.table-container-ios {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  max-height: 400px;
+}
+
+.table-container-ios table {
+  min-width: 700px;
+}
+
+.table-container-ios tbody tr {
+  height: 50px;
+}
+
+.table-container-ios::-webkit-scrollbar {
+  -webkit-appearance: none;
+  height: 5px;
+}
+
+.table-container-ios::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background-color: rgba(0,0,0,.2);
+}
+
+.sort-button,
+.chart-btn {
+  background-color: #e74c3c;
+  border: 1px solid #000;
+  color: #fff;
+}
+
+.sort-button:hover,
+.chart-btn:hover {
+  background-color: #c0392b;
+}
+
+.sortable-header {
+  background-color: #f8f9fa;
+  user-select: none;
+}
+
+.sortable-header:hover {
+  background-color: #e2e6ea;
+}
+
+.challenge-gp {
+  font-weight: 600;
+}
+
+.drift-night {
+  font-weight: 600;
+}
+
+.kart-input {
+  min-width: 80px;
+}
+
+.purchase-card {
+  background-color: #f8f9fa;
+}
+
+#purchaseList button {
+  line-height: 1;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const table = document.getElementById('allRacesTable');
+  const tableContainer = document.querySelector('.table-container-ios');
+  const btnToggle = document.getElementById('toggleRows');
+  const challengeBtn = document.getElementById('challengeBtn');
+  const purchaseRaceInput = document.getElementById('purchaseRace');
+  const purchaseCountInput = document.getElementById('purchaseCount');
+  const addPurchaseBtn = document.getElementById('addPurchase');
+  const clearPurchasesBtn = document.getElementById('clearPurchases');
+  const purchaseList = document.getElementById('purchaseList');
+  const purchaseFeedback = document.getElementById('purchaseFeedback');
+  const MAX_ROWS = 10;
+  const totalRaces = {{ total_races }};
+
+  let showAllRows = false;
+  let challengeOnly = false;
+  let sortDirections = [];
+  let purchases = [];
+
+  function getCellValue(row, colIndex) {
+    const cell = row.cells[colIndex];
+    if (!cell) return '';
+    const input = cell.querySelector('input');
+    if (input) return input.value.trim();
+    if (cell.dataset && cell.dataset.sort) return cell.dataset.sort;
+    return cell.innerText.trim();
+  }
+
+  function applyRowPaging() {
+    if (!table || !tableContainer || !btnToggle || !table.tBodies.length) return;
+    const visibleRows = Array.from(table.tBodies[0].rows).filter(row => row.style.display !== 'none');
+    if (visibleRows.length <= MAX_ROWS) {
+      visibleRows.forEach(row => row.classList.remove('d-none'));
+      tableContainer.style.maxHeight = '400px';
+      btnToggle.style.display = 'none';
+      showAllRows = false;
+      return;
+    }
+    btnToggle.style.display = '';
+    if (showAllRows) {
+      visibleRows.forEach(row => row.classList.remove('d-none'));
+      btnToggle.textContent = 'Show Less';
+      tableContainer.style.maxHeight = '80vh';
+    } else {
+      visibleRows.forEach((row, index) => {
+        if (index >= MAX_ROWS) row.classList.add('d-none');
+        else row.classList.remove('d-none');
+      });
+      btnToggle.textContent = 'Show All';
+      tableContainer.style.maxHeight = '400px';
+    }
+  }
+
+  function updateRemainingCells() {
+    if (!table || !table.tBodies.length) return;
+    const rows = Array.from(table.tBodies[0].rows);
+    rows.forEach(row => {
+      const cell = row.querySelector('.remaining-cell');
+      if (!cell) return;
+      if (!purchases.length) {
+        cell.textContent = '';
+        cell.classList.remove('text-danger', 'fw-bold');
+        return;
+      }
+      const raceNumber = parseInt(row.dataset.raceNumber, 10) || 0;
+      const totalPurchased = purchases.reduce((sum, entry) => {
+        return entry.race <= raceNumber ? sum + entry.count : sum;
+      }, 0);
+      const remaining = totalPurchased - raceNumber;
+      cell.textContent = remaining;
+      if (remaining < 0) {
+        cell.classList.add('text-danger', 'fw-bold');
+      } else {
+        cell.classList.remove('text-danger', 'fw-bold');
+      }
+    });
+  }
+
+  function applyFilters() {
+    if (!table || !table.tBodies.length) return;
+    const rows = Array.from(table.tBodies[0].rows);
+    rows.forEach(row => {
+      row.classList.remove('d-none');
+      const isChallenge = row.dataset.challenge === 'true';
+      row.style.display = (!challengeOnly || isChallenge) ? '' : 'none';
+    });
+    applyRowPaging();
+    updateRemainingCells();
+  }
+
+  function renderPurchases() {
+    purchaseList.innerHTML = '';
+    if (!purchases.length) {
+      const li = document.createElement('li');
+      li.className = 'text-muted';
+      li.textContent = 'No purchases recorded yet.';
+      purchaseList.appendChild(li);
+      return;
+    }
+    purchases.forEach((entry, index) => {
+      const li = document.createElement('li');
+      li.className = 'd-flex justify-content-between align-items-center mb-1';
+      const label = document.createElement('span');
+      label.textContent = `Race #${entry.race}: +${entry.count}`;
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn btn-sm btn-outline-danger';
+      removeBtn.dataset.index = index;
+      removeBtn.textContent = 'Remove';
+      li.appendChild(label);
+      li.appendChild(removeBtn);
+      purchaseList.appendChild(li);
+    });
+  }
+
+  if (btnToggle) {
+    btnToggle.addEventListener('click', () => {
+      showAllRows = !showAllRows;
+      applyRowPaging();
+    });
+  }
+
+  if (challengeBtn) {
+    challengeBtn.addEventListener('click', () => {
+      challengeOnly = !challengeOnly;
+      challengeBtn.textContent = challengeOnly ? 'Show All Sessions' : 'Show Potential Challenge GP';
+      applyFilters();
+    });
+  }
+
+  if (addPurchaseBtn) {
+    addPurchaseBtn.addEventListener('click', () => {
+      const raceValue = parseInt(purchaseRaceInput.value, 10);
+      const countValue = parseInt(purchaseCountInput.value, 10);
+      purchaseFeedback.classList.remove('text-danger', 'text-success');
+      purchaseFeedback.textContent = '';
+
+      if (!raceValue || raceValue < 1 || (totalRaces > 0 && raceValue > totalRaces)) {
+        const message = totalRaces > 0
+          ? `Enter a race number between 1 and ${totalRaces}.`
+          : 'Enter a race number greater than 0.';
+        purchaseFeedback.textContent = message;
+        purchaseFeedback.classList.add('text-danger');
+        return;
+      }
+      if (!countValue || countValue < 1) {
+        purchaseFeedback.textContent = 'Enter a purchase amount greater than 0.';
+        purchaseFeedback.classList.add('text-danger');
+        return;
+      }
+
+      purchases.push({ race: raceValue, count: countValue });
+      purchases.sort((a, b) => a.race - b.race);
+      purchaseRaceInput.value = '';
+      purchaseCountInput.value = '';
+      purchaseFeedback.textContent = 'Purchase added.';
+      purchaseFeedback.classList.add('text-success');
+      renderPurchases();
+      updateRemainingCells();
+    });
+  }
+
+  if (clearPurchasesBtn) {
+    clearPurchasesBtn.addEventListener('click', () => {
+      purchases = [];
+      purchaseFeedback.classList.remove('text-danger', 'text-success');
+      purchaseFeedback.textContent = 'Purchase list cleared.';
+      purchaseFeedback.classList.add('text-success');
+      renderPurchases();
+      updateRemainingCells();
+    });
+  }
+
+  if (purchaseList) {
+    purchaseList.addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-index]');
+      if (!button) return;
+      const idx = parseInt(button.dataset.index, 10);
+      if (Number.isNaN(idx)) return;
+      purchases.splice(idx, 1);
+      purchaseFeedback.classList.remove('text-danger', 'text-success');
+      purchaseFeedback.textContent = 'Purchase removed.';
+      purchaseFeedback.classList.add('text-success');
+      renderPurchases();
+      updateRemainingCells();
+    });
+  }
+
+  window.sortTable = function (colIndex) {
+    if (!table || !table.tBodies.length) return;
+    const tbody = table.tBodies[0];
+    const rows = Array.from(tbody.rows);
+    sortDirections[colIndex] = !sortDirections[colIndex];
+    const dir = sortDirections[colIndex] ? 1 : -1;
+
+    rows.sort((a, b) => {
+      if (colIndex === 0) {
+        const raceA = parseInt(a.dataset.raceNumber, 10) || 0;
+        const raceB = parseInt(b.dataset.raceNumber, 10) || 0;
+        return (raceA - raceB) * dir;
+      }
+      if (colIndex === 1) {
+        const dateA = new Date(a.dataset.datetime);
+        const dateB = new Date(b.dataset.datetime);
+        return (dateA - dateB) * dir;
+      }
+      const valueA = getCellValue(a, colIndex);
+      const valueB = getCellValue(b, colIndex);
+      const numA = parseFloat(valueA);
+      const numB = parseFloat(valueB);
+      if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
+        return (numA - numB) * dir;
+      }
+      return valueA.localeCompare(valueB) * dir;
+    });
+
+    rows.forEach(row => tbody.appendChild(row));
+    applyFilters();
+  };
+
+  applyFilters();
+  renderPurchases();
+  updateRemainingCells();
+});
+</script>
+{% endblock %}
