@@ -755,6 +755,13 @@ document.addEventListener("DOMContentLoaded", function () {
         applyTableFilters();
     };
 
+    if (table && table.tBodies.length) {
+        sortDirections[0] = true;
+        window.sortTable(0);
+    } else {
+        applyTableFilters();
+    }
+
     updateDriftButtonState();
     updateChart();
 });
