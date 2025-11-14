@@ -37,7 +37,7 @@
         </div>
         <div class="col-12">
           <div class="purchase-note">
-            <strong>Heads up:</strong> Import new races before updating this tracker. Adult Challenge GP packages contain <strong>3 races</strong>, while Junior and Teen packs include <strong>2 races</strong>.
+            <strong>Heads up:</strong> Import new races before updating this tracker. The first time you run it, just enter how many races you already have on your account so the baseline is correct. Adult Challenge GP packages contain <strong>3 races</strong>, while Junior and Teen packs include <strong>2 races</strong>.
           </div>
         </div>
       </div>
@@ -58,9 +58,9 @@
             <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(3)">Track <span class="sort-icons">⇅</span></button></th>
             <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(4)">Best Lap <span class="sort-icons">⇅</span></button></th>
             <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(5)">Avg Lap <span class="sort-icons">⇅</span></button></th>
-            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(6)">Total Laps <span class="sort-icons">⇅</span></button></th>
-            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(7)">Fastest Lap # <span class="sort-icons">⇅</span></button></th>
-            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(8)">Kart # <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(6)">Kart # <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(7)">Total Laps <span class="sort-icons">⇅</span></button></th>
+            <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable(8)">Fastest Lap # <span class="sort-icons">⇅</span></button></th>
             {% for i in range(1, 17) %}
             <th class="sortable-header"><button type="button" class="btn btn-light btn-sm sort-button w-100" onclick="sortTable({{ i + 8 }})">Lap {{ i }} <span class="sort-icons">⇅</span></button></th>
             {% endfor %}
@@ -80,9 +80,14 @@
             <td>{{ s.track_display }}</td>
             <td>{{ s.best_lap }}</td>
             <td>{{ s.avg_lap }}</td>
+            <td>
+              <div class="kart-entry">
+                <input type="text" class="form-control form-control-sm kart-input" placeholder="Kart #">
+                <button type="button" class="btn btn-secondary btn-sm kart-save-btn">Save</button>
+              </div>
+            </td>
             <td>{{ s.total_laps }}</td>
             <td>{{ s.fastest_lap_num }}</td>
-            <td><input type="text" class="form-control form-control-sm kart-input" placeholder="Kart #"></td>
             {% for lap in s.laps %}
             <td>{{ "%.3f"|format(lap|float) }}</td>
             {% endfor %}
@@ -225,6 +230,16 @@
   min-width: 80px;
 }
 
+.kart-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.kart-entry .kart-save-btn {
+  white-space: nowrap;
+}
+
 #purchaseList button {
   line-height: 1;
 }
@@ -289,6 +304,18 @@ document.addEventListener('DOMContentLoaded', function () {
     window.dispatchEvent(event);
   }
 
+  function persistKartAssignment(sessionId, value) {
+    const trimmedValue = value.trim();
+    if (trimmedValue) {
+      kartAssignments[sessionId] = trimmedValue;
+    } else {
+      delete kartAssignments[sessionId];
+    }
+    saveKartAssignments();
+    refreshKartInputs();
+    broadcastKartUpdate(sessionId, trimmedValue);
+  }
+
   if (table && table.tBodies.length) {
     const rows = Array.from(table.tBodies[0].rows);
     rows.forEach(row => {
@@ -296,20 +323,21 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!sessionId) return;
       const input = row.querySelector('.kart-input');
       if (!input) return;
+      const saveButton = row.querySelector('.kart-save-btn');
       const storedValue = kartAssignments[sessionId];
       if (storedValue) {
         input.value = storedValue;
       }
-      input.addEventListener('input', (event) => {
-        const value = event.target.value.trim();
-        if (value) {
-          kartAssignments[sessionId] = value;
-        } else {
-          delete kartAssignments[sessionId];
+      if (saveButton) {
+        saveButton.addEventListener('click', () => {
+          persistKartAssignment(sessionId, input.value);
+        });
+      }
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          persistKartAssignment(sessionId, input.value);
         }
-        saveKartAssignments();
-        refreshKartInputs();
-        broadcastKartUpdate(sessionId, value);
       });
     });
   }
