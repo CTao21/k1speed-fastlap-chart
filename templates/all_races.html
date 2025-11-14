@@ -56,8 +56,10 @@
           {% for s in sessions %}
           <tr class="{% if s.challenge_gp %}table-success challenge-gp{% elif s.drift_night %}table-warning drift-night{% endif %}"
               data-challenge="{{ 'true' if s.challenge_gp else 'false' }}"
+              data-drift="{{ 'true' if s.drift_night else 'false' }}"
               data-datetime="{{ s.date_iso }}"
-              data-race-number="{{ s.race_number }}">
+              data-race-number="{{ s.race_number }}"
+              data-session="{{ s.id }}">
             <td data-sort="{{ '%04d'|format(s.race_number) }}">{{ s.race_number }}</td>
             <td data-sort="{{ s.date_iso }}"><a href="{{ url_for('race_detail', session_id=s.id) }}">{{ s.date_display }}</a></td>
             <td>{{ s.track_display }}</td>
@@ -171,6 +173,94 @@ document.addEventListener('DOMContentLoaded', function () {
   const purchaseFeedback = document.getElementById('purchaseFeedback');
   const MAX_ROWS = 10;
   const totalRaces = {{ total_races }};
+
+  const KART_STORAGE_KEY = 'kartAssignments';
+
+  function loadKartAssignments() {
+    try {
+      const stored = localStorage.getItem(KART_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : {};
+    } catch (err) {
+      console.warn('Unable to read kart assignments from storage.', err);
+      return {};
+    }
+  }
+
+  let kartAssignments = loadKartAssignments();
+
+  function saveKartAssignments() {
+    try {
+      localStorage.setItem(KART_STORAGE_KEY, JSON.stringify(kartAssignments));
+    } catch (err) {
+      console.warn('Unable to save kart assignments.', err);
+    }
+  }
+
+  function refreshKartInputs() {
+    if (!table || !table.tBodies.length) return;
+    const rows = Array.from(table.tBodies[0].rows);
+    rows.forEach(row => {
+      const sessionId = row.dataset.session;
+      if (!sessionId) return;
+      const input = row.querySelector('.kart-input');
+      if (!input) return;
+      const storedValue = kartAssignments[sessionId] || '';
+      if (input.value !== storedValue) {
+        input.value = storedValue;
+      }
+    });
+  }
+
+  function broadcastKartUpdate(sessionId, value) {
+    const event = new CustomEvent('kartAssignmentUpdated', {
+      detail: { sessionId, value }
+    });
+    window.dispatchEvent(event);
+  }
+
+  if (table && table.tBodies.length) {
+    const rows = Array.from(table.tBodies[0].rows);
+    rows.forEach(row => {
+      const sessionId = row.dataset.session;
+      if (!sessionId) return;
+      const input = row.querySelector('.kart-input');
+      if (!input) return;
+      const storedValue = kartAssignments[sessionId];
+      if (storedValue) {
+        input.value = storedValue;
+      }
+      input.addEventListener('input', (event) => {
+        const value = event.target.value.trim();
+        if (value) {
+          kartAssignments[sessionId] = value;
+        } else {
+          delete kartAssignments[sessionId];
+        }
+        saveKartAssignments();
+        refreshKartInputs();
+        broadcastKartUpdate(sessionId, value);
+      });
+    });
+  }
+
+  window.addEventListener('storage', (event) => {
+    if (event.key !== KART_STORAGE_KEY) return;
+    kartAssignments = loadKartAssignments();
+    refreshKartInputs();
+  });
+
+  window.addEventListener('kartAssignmentUpdated', (event) => {
+    if (!event.detail || !event.detail.sessionId) return;
+    const { sessionId, value } = event.detail;
+    if (value) {
+      kartAssignments[sessionId] = value;
+    } else {
+      delete kartAssignments[sessionId];
+    }
+    refreshKartInputs();
+  });
+
+  refreshKartInputs();
 
   let showAllRows = false;
   let challengeOnly = false;
