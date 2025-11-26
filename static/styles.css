@@ -35,7 +35,7 @@ body {
     content: '';
     position: absolute;
     inset: 0;
-    background: rgba(255, 255, 255, 0.93) url('https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0f/3a/75/ca/bird-s-eye-view-of-kf1.jpg');
+    background: rgba(255, 255, 255, 0.82) url('https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0f/3a/75/ca/bird-s-eye-view-of-kf1.jpg');
     background-size: cover;
     background-blend-mode: overlay;
     z-index: 0;
@@ -235,8 +235,7 @@ table th {
 
 /* About Page */
 .about-page .about-hero::before {
-    background: linear-gradient(135deg, rgba(231, 76, 60, 0.12), rgba(255,255,255,0.9));
-    opacity: 0.9;
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.12), rgba(255,255,255,0.82));
 }
 
 .about-hero h1 {
