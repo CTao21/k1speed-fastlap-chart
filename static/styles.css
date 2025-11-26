@@ -253,23 +253,34 @@ table th {
 }
 
 .about-photo-slot {
-    height: 220px;
-    border: 2px dashed rgba(0,0,0,0.2);
+    position: relative;
+    height: 240px;
     border-radius: 12px;
-    background: rgba(255,255,255,0.7);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 1.5rem;
+    overflow: hidden;
+    background: rgba(255,255,255,0.85);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.about-photo-slot--portrait {
+    height: 280px;
+}
+
+.about-photo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .about-photo-label {
+    position: absolute;
+    top: 12px;
+    left: 12px;
     font-weight: 700;
-    color: #e74c3c;
-    margin-bottom: 0.5rem;
+    color: #fff;
+    background: rgba(231, 76, 60, 0.92);
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 
 .about-badge {
@@ -285,4 +296,9 @@ table th {
     .about-contact {
         flex-wrap: wrap;
     }
+}
+
+/* Give the about page hero card extra opacity for readability */
+.about-page .main-card::before {
+    background-color: rgba(255, 255, 255, 0.95);
 }
