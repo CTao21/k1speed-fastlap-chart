@@ -112,11 +112,43 @@ def extract_email_body(msg):
             pass
     return None
 
-def filter_laps_by_cutoff(display_location, laps):
+def apply_lap_cutoff(display_location, laps):
+    """Apply per-track lap cutoffs but preserve lap positions.
+
+    Returns the lap list with any values below the cutoff replaced by ``None``
+    and a boolean indicating whether anything was removed.
+    """
     cutoff = LAP_TIME_CUTOFFS.get(display_location)
-    if not cutoff:
-        return laps  # No cutoff defined, keep all laps
-    return [lap for lap in laps if lap >= cutoff]
+    removed = False
+    filtered = []
+
+    for lap in laps:
+        if lap is None:
+            filtered.append(None)
+            continue
+        if cutoff and lap < cutoff:
+            filtered.append(None)
+            removed = True
+        else:
+            filtered.append(lap)
+
+    return filtered, removed
+
+
+def summarize_laps(display_location, laps):
+    """Apply cutoffs and return filtered laps plus derived stats."""
+    filtered_laps, removed = apply_lap_cutoff(display_location, laps)
+    valid_laps = [lap for lap in filtered_laps if lap is not None]
+
+    if not valid_laps:
+        return filtered_laps, removed, None, None, None, 0
+
+    best_lap = min(valid_laps)
+    avg_lap = statistics.mean(valid_laps)
+    fastest_idx = next((i for i, lap in enumerate(filtered_laps) if lap == best_lap), None)
+    fastest_lap_num = fastest_idx + 1 if fastest_idx is not None else None
+
+    return filtered_laps, removed, best_lap, avg_lap, fastest_lap_num, len(valid_laps)
 
 
 @app.cli.command('reapply_cutoffs')
@@ -127,24 +159,26 @@ def reapply_cutoffs():
 
     for session_row in sessions:
         lap_list = ast.literal_eval(session_row.lap_data or '[]')
-        filtered_laps = filter_laps_by_cutoff(session_row.track.display_name, lap_list)
+        filtered_laps, _, best_lap, avg_lap, fastest_idx, total_valid = summarize_laps(
+            session_row.track.display_name,
+            lap_list,
+        )
 
-        if filtered_laps == lap_list:
+        if (
+            filtered_laps == lap_list
+            and session_row.total_laps == total_valid
+            and session_row.best_lap == best_lap
+            and session_row.avg_lap == avg_lap
+            and session_row.fastest_lap_num == fastest_idx
+        ):
             continue
 
         updated_sessions += 1
-        session_row.total_laps = len(filtered_laps)
+        session_row.total_laps = total_valid
         session_row.lap_data = str(filtered_laps)
-
-        if filtered_laps:
-            best_lap = min(filtered_laps)
-            session_row.best_lap = best_lap
-            session_row.avg_lap = statistics.mean(filtered_laps)
-            session_row.fastest_lap_num = filtered_laps.index(best_lap) + 1
-        else:
-            session_row.best_lap = None
-            session_row.avg_lap = None
-            session_row.fastest_lap_num = None
+        session_row.best_lap = best_lap
+        session_row.avg_lap = avg_lap
+        session_row.fastest_lap_num = fastest_idx
 
     db.session.commit()
     print(f"Updated {updated_sessions} session(s) with new lap cutoffs.")
@@ -202,9 +236,9 @@ def parse_email(msg, k1_name):
 
     # extract lap times
     laps = [float(x) for x in re.findall(r"\(\d+\)\s*([\d.]+)", text)]
-    laps = filter_laps_by_cutoff(display_loc, laps)
+    laps, _, best_lap, avg_lap, fastest_idx, total_valid = summarize_laps(display_loc, laps)
 
-    if len(laps) < 1 or min(laps) > 300:
+    if total_valid < 1 or (best_lap is not None and best_lap > 300):
         print("❌ Invalid lap data")
         return None
 
@@ -216,9 +250,9 @@ def parse_email(msg, k1_name):
     if not nm:
         print("❌ No name match")
         return None
-    best_lap = float(nm.group(1))
-    avg_lap  = float(nm.group(2))
-    fastest_idx = laps.index(best_lap) + 1
+    # Keep the parsed laps/averages rather than trusting the email when
+    # timing cutoffs remove laps. The name match above just confirms the
+    # session belongs to the user.
 
     return {
         'raw_location': loc_clean,
@@ -227,7 +261,8 @@ def parse_email(msg, k1_name):
         'laps': laps,
         'best_lap': best_lap,
         'avg_lap': avg_lap,
-        'fastest_lap_num': fastest_idx
+        'fastest_lap_num': fastest_idx,
+        'total_valid_laps': total_valid
     }
 
 
@@ -454,7 +489,7 @@ def import_results():
             if not Session.query.filter_by(track_id=track.id, date=rd['date']).first():
                 s = Session(
                     date=rd['date'],
-                    total_laps=len(rd['laps']),
+                    total_laps=rd.get('total_valid_laps', len(rd['laps'])),
                     best_lap=rd['best_lap'],
                     avg_lap=rd['avg_lap'],
                     fastest_lap_num=rd['fastest_lap_num'],
@@ -601,30 +636,35 @@ def track_detail(track_name):
 
     sessions, dates, bests, date_times = [], [], [], []
     for s in sorted(t.sessions, key=lambda x: x.date):
-        lap_list = eval(s.lap_data or '[]')
+        lap_list = ast.literal_eval(s.lap_data or '[]')
+        has_timing_issue = any(lap is None for lap in lap_list)
         is_challenge = (
             (s.total_laps or 0) >= 14 and
             s.date.day <= 7 and
             s.date.weekday() in (6, 0)  # Sunday=6, Monday=0
         )
+        best_lap_str = f"{s.best_lap:.3f}" if s.best_lap is not None else ''
+        avg_lap_str = f"{s.avg_lap:.3f}" if s.avg_lap is not None else ''
         session_dict = {
             'id': s.id,
             'date_display': s.date.strftime('%Y-%m-%d %H:%M'),
             'date_iso': s.date.isoformat(),
             'date_only': s.date.strftime('%Y-%m-%d'),
             'total_laps': s.total_laps,
-            'best_lap': f"{s.best_lap:.3f}",
+            'best_lap': best_lap_str,
             'best_lap_value': s.best_lap,
-            'avg_lap': f"{s.avg_lap:.3f}",
+            'avg_lap': avg_lap_str,
             'avg_lap_value': s.avg_lap,
             'fastest_lap_num': s.fastest_lap_num,
             'laps': lap_list,
-            'challenge_gp': is_challenge
+            'challenge_gp': is_challenge,
+            'timing_issue': has_timing_issue
         }
         sessions.append(session_dict)
         dates.append(s.date.strftime('%Y-%m-%d'))
         date_times.append(s.date.isoformat())
-        bests.append(s.best_lap)
+        if s.best_lap is not None:
+            bests.append(s.best_lap)
 
     drift_cutoff = 0
     if bests:
@@ -640,6 +680,8 @@ def track_detail(track_name):
     improvement_dates, improvement_laps = [], []
     best_so_far = float('inf')
     for s in sorted(t.sessions, key=lambda x: x.date):
+        if s.best_lap is None:
+            continue
         if s.best_lap < best_so_far:
             best_so_far = s.best_lap
             improvement_dates.append(s.date.strftime('%Y-%m-%d %H:%M'))
@@ -669,9 +711,10 @@ def race_detail(session_id):
     if race_session.track.user.email != session['email']:
         return redirect(url_for('imap_login'))
 
-    laps = eval(race_session.lap_data or '[]')
+    laps = ast.literal_eval(race_session.lap_data or '[]')
     user_sessions = race_session.track.sessions
     personal_best = min((s.best_lap for s in user_sessions), default=None)
+    has_timing_issue = any(lap is None for lap in laps)
 
     return render_template(
         'race.html',
@@ -679,6 +722,7 @@ def race_detail(session_id):
         race_session=race_session,
         laps=laps,
         personal_best=personal_best,
+        timing_issue=has_timing_issue,
         username=race_session.track.user.username
     )
 
@@ -698,16 +742,19 @@ def all_races():
         track_sessions = sorted(track.sessions, key=lambda s: s.date)
         if not track_sessions:
             continue
-        bests = [s.best_lap for s in track_sessions]
+        bests = [s.best_lap for s in track_sessions if s.best_lap is not None]
         drift_cutoff = statistics.median(bests) + 7 if bests else None
         for s in track_sessions:
-            lap_list = eval(s.lap_data or '[]')
+            lap_list = ast.literal_eval(s.lap_data or '[]')
+            has_timing_issue = any(lap is None for lap in lap_list)
             is_challenge = (
                 (s.total_laps or 0) >= 14 and
                 s.date.day <= 7 and
                 s.date.weekday() in (6, 0)
             )
             is_drift = drift_cutoff is not None and s.best_lap >= drift_cutoff
+            best_lap_str = f"{s.best_lap:.3f}" if s.best_lap is not None else ''
+            avg_lap_str = f"{s.avg_lap:.3f}" if s.avg_lap is not None else ''
             combined_sessions.append({
                 'id': s.id,
                 'race_number': 0,
@@ -716,14 +763,15 @@ def all_races():
                 'date_display': s.date.strftime('%Y-%m-%d %H:%M'),
                 'date_iso': s.date.isoformat(),
                 'total_laps': s.total_laps,
-                'best_lap': f"{s.best_lap:.3f}",
+                'best_lap': best_lap_str,
                 'best_lap_value': s.best_lap,
-                'avg_lap': f"{s.avg_lap:.3f}",
+                'avg_lap': avg_lap_str,
                 'avg_lap_value': s.avg_lap,
                 'fastest_lap_num': s.fastest_lap_num,
                 'laps': lap_list,
                 'challenge_gp': is_challenge,
-                'drift_night': is_drift
+                'drift_night': is_drift,
+                'timing_issue': has_timing_issue
             })
 
     combined_sessions.sort(key=lambda x: x['date_iso'])
@@ -752,11 +800,12 @@ def download(track_name):
                + [f'Lap {i}' for i in range(1,17)])
 
     for s in t.sessions:
-        laps = eval(s.lap_data or '[]')
+        laps = ast.literal_eval(s.lap_data or '[]')
+        lap_cells = [("" if lap is None else lap) for lap in laps[:16]]
         row = [
             s.date.strftime('%Y-%m-%d %H:%M'),
             s.total_laps, s.best_lap, s.avg_lap, s.fastest_lap_num
-        ] + laps[:16]
+        ] + lap_cells
         w.writerow(row)
 
     return Response(
