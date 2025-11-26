@@ -254,42 +254,17 @@ table th {
 
 .about-photo-slot {
     position: relative;
-    height: 240px;
     border-radius: 12px;
     overflow: hidden;
     background: rgba(255,255,255,0.85);
     box-shadow: 0 8px 20px rgba(0,0,0,0.08);
 }
 
-.about-photo-slot--portrait {
-    height: 280px;
-}
-
 .about-photo-img {
+    display: block;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.about-photo-label {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    font-weight: 700;
-    color: #fff;
-    background: rgba(231, 76, 60, 0.92);
-    padding: 0.35rem 0.9rem;
-    border-radius: 999px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-}
-
-.about-badge {
-    background: rgba(231, 76, 60, 0.12);
-    color: #b12c1e;
-    padding: 0.4rem 0.75rem;
-    border-radius: 999px;
-    font-weight: 700;
-    font-size: 0.9rem;
+    height: auto;
+    object-fit: contain;
 }
 
 @media (max-width: 768px) {
