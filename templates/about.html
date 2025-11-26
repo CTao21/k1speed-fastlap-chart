@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-5 about-page">
+    <div class="main-card wide-card about-hero mb-4">
+        <div class="row g-4 align-items-center">
+            <div class="col-lg-6">
+                <p class="eyebrow text-uppercase text-danger fw-bold mb-2">About the Author</p>
+                <h1 class="display-5 fw-bold mb-3">Connor Tao</h1>
+                <p class="lead mb-3">Hi, I’m Connor — an actuarial science major at UC Santa Barbara who spends way too much time at K1 Speed.</p>
+                <p class="mb-3">I built this app because I wanted a clean, simple way to track lap times, analyze performance, and see improvement over time. What started as a small personal project grew into a full data dashboard with charts, filters, import tools, and track pages. I love racing, stats, and building things that make life easier, and this app brings all those interests together.</p>
+                <div class="about-contact d-flex align-items-center gap-3 mt-3">
+                    <div class="about-badge">Karting addict</div>
+                    <div class="about-badge">Data nerd</div>
+                    <div class="about-badge">Builder</div>
+                </div>
+                <div class="mt-4">
+                    <a class="btn btn-danger btn-lg shadow" href="mailto:ctao1037@gmail.com">Get in touch</a>
+                    <div class="text-muted small mt-2">For support or questions, you can reach me at ctao1037@gmail.com</div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="about-photo-grid">
+                    <div class="about-photo-slot">
+                        <div class="about-photo-label">Kart snapshot #1</div>
+                        <p class="small text-muted mb-0">Drop your first image at <code>static/img/author-kart-1.jpg</code>.</p>
+                    </div>
+                    <div class="about-photo-slot">
+                        <div class="about-photo-label">Kart snapshot #2</div>
+                        <p class="small text-muted mb-0">Drop your second image at <code>static/img/author-kart-2.jpg</code>.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="main-card about-card h-100">
+                <h3 class="fw-bold mb-3">Built for racers, by a racer</h3>
+                <p class="mb-3">This project started as a personal tracker and evolved into a full lap-time lab. Every feature — from parsing emails to slicing lap data — was shaped by weekends at the track and hours obsessing over splits.</p>
+                <ul class="about-list mb-0">
+                    <li>Instant lap imports from race emails</li>
+                    <li>Clean charts to visualize progress over time</li>
+                    <li>Track-specific views and leaderboards</li>
+                    <li>Filters that surface your best laps and sessions</li>
+                </ul>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="main-card about-card h-100">
+                <h3 class="fw-bold mb-3">The philosophy</h3>
+                <p class="mb-3">Simple enough to use after a heat, detailed enough to help you shave tenths. The design focuses on clarity, quick insights, and staying out of the way while you race and iterate.</p>
+                <div class="about-timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div>
+                            <div class="fw-bold">Idea</div>
+                            <div class="text-muted small">Frustrated with scattered lap times and screenshots.</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div>
+                            <div class="fw-bold">Build</div>
+                            <div class="text-muted small">Automated imports, track pages, charts, and filters.</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div>
+                            <div class="fw-bold">Today</div>
+                            <div class="text-muted small">A focused dashboard for anyone chasing faster laps.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

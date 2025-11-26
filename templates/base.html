@@ -10,14 +10,15 @@
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark">
-        <div class="container">
+        <div class="container d-flex justify-content-between align-items-center">
             <a class="navbar-brand" href="/">K1 Speed Tracker</a>
-            {% if 'email' in session %}
-            <div class="d-flex">
+            <div class="d-flex align-items-center">
+                <a href="{{ url_for('about') }}" class="btn btn-sm btn-outline-light me-2">About</a>
+                {% if 'email' in session %}
                 <a href="{{ url_for('results') }}" class="btn btn-sm btn-outline-light me-2">My Results</a>
                 <a href="{{ url_for('leaderboard') }}" class="btn btn-sm btn-outline-light">Leaderboards</a>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
     </nav>
     
