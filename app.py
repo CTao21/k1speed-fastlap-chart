@@ -272,6 +272,11 @@ def home():
     return redirect(url_for('imap_login'))
 
 
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+
 @app.route('/imap_login', methods=['GET','POST'])
 def imap_login():
     if request.method == 'POST':
