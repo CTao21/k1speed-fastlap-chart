@@ -1,3 +1,4 @@
+import ast
 import os
 import re
 import imaplib
@@ -59,8 +60,10 @@ EMAIL_PROVIDER_IMAP = {
 
 # --- Track-specific lap time cutoffs ---
 LAP_TIME_CUTOFFS = {
-    'Burbank': 23.2,
-    'Thousand Oaks': 27.5
+    'Burbank': 22.0,
+    'Culver City Track 1': 27.0,
+    'Thousand Oaks': 26.5,
+    'Torrance Track 1': 26.5
 }
 
 # --- Models ---
@@ -114,6 +117,37 @@ def filter_laps_by_cutoff(display_location, laps):
     if not cutoff:
         return laps  # No cutoff defined, keep all laps
     return [lap for lap in laps if lap >= cutoff]
+
+
+@app.cli.command('reapply_cutoffs')
+def reapply_cutoffs():
+    """Reapply lap time cutoffs to existing sessions in the database."""
+    sessions = Session.query.join(Track).all()
+    updated_sessions = 0
+
+    for session_row in sessions:
+        lap_list = ast.literal_eval(session_row.lap_data or '[]')
+        filtered_laps = filter_laps_by_cutoff(session_row.track.display_name, lap_list)
+
+        if filtered_laps == lap_list:
+            continue
+
+        updated_sessions += 1
+        session_row.total_laps = len(filtered_laps)
+        session_row.lap_data = str(filtered_laps)
+
+        if filtered_laps:
+            best_lap = min(filtered_laps)
+            session_row.best_lap = best_lap
+            session_row.avg_lap = statistics.mean(filtered_laps)
+            session_row.fastest_lap_num = filtered_laps.index(best_lap) + 1
+        else:
+            session_row.best_lap = None
+            session_row.avg_lap = None
+            session_row.fastest_lap_num = None
+
+    db.session.commit()
+    print(f"Updated {updated_sessions} session(s) with new lap cutoffs.")
 
 
 # Image file overrides for tracks that don't follow the standard naming convention
