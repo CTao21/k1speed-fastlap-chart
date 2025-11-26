@@ -35,7 +35,7 @@ body {
     content: '';
     position: absolute;
     inset: 0;
-    background: rgba(255, 255, 255, 0.82) url('https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0f/3a/75/ca/bird-s-eye-view-of-kf1.jpg');
+    background: rgba(255, 255, 255, 0.93) url('https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0f/3a/75/ca/bird-s-eye-view-of-kf1.jpg');
     background-size: cover;
     background-blend-mode: overlay;
     z-index: 0;
@@ -280,49 +280,6 @@ table th {
     border-radius: 999px;
     font-weight: 700;
     font-size: 0.9rem;
-}
-
-.about-card::before {
-    background: rgba(255, 255, 255, 0.92);
-}
-
-.about-list {
-    list-style: none;
-    padding-left: 0;
-}
-
-.about-list li {
-    position: relative;
-    padding-left: 1.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.about-list li::before {
-    content: '➜';
-    position: absolute;
-    left: 0;
-    color: #e74c3c;
-}
-
-.about-timeline {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.timeline-item {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-start;
-}
-
-.timeline-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    margin-top: 5px;
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-    box-shadow: 0 0 0 6px rgba(231, 76, 60, 0.18);
 }
 
 @media (max-width: 768px) {
