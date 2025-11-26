@@ -126,7 +126,10 @@ def track_image_filename(raw_name):
 
     Falls back to a non-T1 version if a T1-specific image is missing.
     """
-    name = raw_name.strip().lower().replace(' ', '_')
+    name = raw_name.strip().lower()
+    name = re.sub(r"\s+", "_", name)
+    name = re.sub(r"track_?(\d)", r"t\1", name)
+
     if name in TRACK_IMAGE_OVERRIDES:
         return TRACK_IMAGE_OVERRIDES[name]
 
