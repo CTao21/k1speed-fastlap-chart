@@ -91,9 +91,10 @@
                 </thead>
                 <tbody>
                     {% for s in sessions %}
-                    <tr class="{% if s.challenge_gp %}table-success challenge-gp{% elif s.drift_night %}table-warning drift-night{% endif %}"
+                    <tr class="{% if s.timing_issue %}table-danger timing-issue{% elif s.challenge_gp %}table-success challenge-gp{% elif s.drift_night %}table-warning drift-night{% endif %}"
                         data-challenge="{{ 'true' if s.challenge_gp else 'false' }}"
                         data-drift="{{ 'true' if s.drift_night else 'false' }}"
+                        data-timing="{{ 'true' if s.timing_issue else 'false' }}"
                         data-datetime="{{ s.date_iso }}"
                         data-session="{{ s.id }}">
                         <td data-sort="{{ s.date_iso }}"><a href="{{ url_for('race_detail', session_id=s.id) }}">{{ s.date_display }}</a></td>
@@ -108,7 +109,7 @@
                         <td>{{ s.total_laps }}</td>
                         <td>{{ s.fastest_lap_num }}</td>
                         {% for lap in s.laps %}
-                        <td>{{ "%.3f"|format(lap|float) }}</td>
+                        <td>{% if lap is not none %}{{ "%.3f"|format(lap|float) }}{% endif %}</td>
                         {% endfor %}
                         {% for i in range(16 - s.laps|length) %}
                         <td></td>
@@ -122,13 +123,15 @@
               <button id="toggleRows" class="btn btn-outline-secondary btn-sm chart-btn">Show All</button>
               <button id="challengeBtn" class="btn btn-outline-secondary btn-sm chart-btn ms-2">Show Potential Challenge GP</button>
               <button id="driftBtn" class="btn btn-outline-secondary btn-sm chart-btn ms-2">Show Drift Nights</button>
+              <button id="timingBtn" class="btn btn-outline-secondary btn-sm chart-btn ms-2">Show Timing Flags</button>
             </div>
             <div class="alert alert-info small py-2 px-3">
               <strong>Legend:</strong>
               <ul class="mb-0 ps-3">
-                <li><span class="badge bg-success me-1">Green rows</span> mark sessions that match the Challenge GP heuristic (14+ laps, run during the first week of a month on Sunday or Monday). Detection is date and lap count based, so races with laps added or deleted could get detected incorrectly.</li>
+                <li><span class="badge bg-success me-1">Green rows</span> mark sessions that match the Challenge GP pattern (14+ laps, run during the first week of a month on Sunday or Monday). Detection is date and lap count based, so races with laps added or deleted could get detected incorrectly.</li>
                 <li><span class="badge bg-warning text-dark me-1">Yellow rows</span> highlight sessions where your best lap was slower than the median pace + 7 seconds, which usually indicates a drift night.</li>
-                <li>Use the Drift Nights controls to quickly focus on or hide these sessions in both the chart and the table.</li>
+                <li><span class="badge bg-danger me-1">Red rows</span> flag sessions where one or more laps were discarded as likely timing errors. Use the Timing Flags filter to focus on or hide them.</li>
+                <li>Use the Drift Nights and Timing Flags controls to quickly focus on or hide these sessions in both the chart and the table.</li>
               </ul>
             </div>
           </div>
@@ -200,6 +203,10 @@
     font-weight: 600;
 }
 
+.timing-issue {
+    font-weight: 600;
+}
+
 .kart-input {
     min-width: 80px;
 }
@@ -247,6 +254,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const btnToggle = document.getElementById('toggleRows');
     const challengeBtn = document.getElementById('challengeBtn');
     const driftBtn = document.getElementById('driftBtn');
+    const timingBtn = document.getElementById('timingBtn');
 
     const MAX_ROWS = 10;
     const driftFlags = data.map(v => driftCutoff ? v >= driftCutoff : false);
@@ -255,6 +263,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let filteredTimes = times.slice();
     let showAllRows = false;
     let challengeOnly = false;
+    let timingOnly = false;
     let sortDirections = [];
     let savedDriftMode = driftFilterSelect ? driftFilterSelect.value : 'all';
     let driftBtnActive = false;
@@ -460,11 +469,15 @@ document.addEventListener("DOMContentLoaded", function () {
             row.classList.remove('d-none');
             const isChallenge = row.dataset.challenge === 'true';
             const isDrift = row.dataset.drift === 'true';
+            const hasTimingIssue = row.dataset.timing === 'true';
             const dateIso = row.dataset.datetime;
             const rowDate = dateIso ? new Date(dateIso) : null;
             const isAfter = includeAfter && rowDate ? isWithinRanges(rowDate, afterRanges) : false;
             let visible = shouldInclude(mode, isDrift, isAfter);
             if (challengeOnly && !isChallenge) {
+                visible = false;
+            }
+            if (timingOnly && !hasTimingIssue) {
                 visible = false;
             }
             row.style.display = visible ? '' : 'none';
@@ -752,6 +765,15 @@ document.addEventListener("DOMContentLoaded", function () {
             challengeOnly = !challengeOnly;
             challengeBtn.textContent = challengeOnly ? 'Show All Sessions' : 'Show Potential Challenge GP';
             challengeBtn.dataset.filtered = challengeOnly ? 'true' : 'false';
+            applyTableFilters();
+        });
+    }
+
+    if (timingBtn) {
+        timingBtn.addEventListener('click', () => {
+            timingOnly = !timingOnly;
+            timingBtn.textContent = timingOnly ? 'Show All Sessions' : 'Show Timing Flags';
+            timingBtn.dataset.filtered = timingOnly ? 'true' : 'false';
             applyTableFilters();
         });
     }

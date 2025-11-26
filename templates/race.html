@@ -5,6 +5,10 @@
   <div class="main-card">
     <h2 class="text-center mb-4">{{ track_name }} - Race on {{ race_session.date.strftime('%B %d, %Y at %I:%M %p') }}</h2>
 
+    {% if timing_issue %}
+    <div class="alert alert-danger small">One or more laps were discarded as likely timing errors. Those lap positions stay blank below so you can see where the cutoff happened.</div>
+    {% endif %}
+
     <div class="text-center mb-4">
       {% if race_session.best_lap == personal_best %}
         <h5>Fastest Lap: <strong>{{ '%.3f' % race_session.best_lap }}s</strong>
@@ -34,18 +38,35 @@
 </div>
 <script>
   window.addEventListener("load", () => {
-  const lapTimes = {{ laps | tojson }};
+  const lapTimesRaw = {{ laps | tojson }};
+  const lapTimes = lapTimesRaw.map(lap => lap === null ? null : Number(lap));
   const baseTime = {{ personal_best | tojson }};
   const ctx = document.getElementById('lapChart').getContext('2d');
 
   function calcOutliers(times) {
-    const sorted = [...times].sort((a,b)=>a-b);
+    const validEntries = times
+      .map((time, idx) => ({ time, idx }))
+      .filter(entry => entry.time !== null && !Number.isNaN(entry.time));
+
+    if (!validEntries.length) {
+      return times.map(() => false);
+    }
+
+    const sorted = validEntries.map(e => e.time).sort((a, b) => a - b);
     const q1 = sorted[Math.floor(sorted.length/4)];
     const q3 = sorted[Math.floor(sorted.length*3/4)];
     const iqr = q3 - q1;
     const lower = q1 - 1.5*iqr;
     const upper = q3 + 1.5*iqr;
-    return times.map(t => t < lower || t > upper);
+    const flags = times.map(() => false);
+
+    validEntries.forEach(entry => {
+      if (entry.time < lower || entry.time > upper) {
+        flags[entry.idx] = true;
+      }
+    });
+
+    return flags;
   }
 
   const outlierFlags = calcOutliers(lapTimes);
@@ -64,7 +85,8 @@
         tension: 0,
         borderWidth: 2,
         pointRadius: 3,
-        pointHoverRadius: 6
+        pointHoverRadius: 6,
+        spanGaps: false
       }]
     },
     options: {
@@ -79,7 +101,13 @@
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: ctx => `Lap ${ctx.dataIndex + 1}: ${lapTimes[ctx.dataIndex].toFixed(3)}s`
+            label: ctx => {
+              const time = lapTimes[ctx.dataIndex];
+              if (time === null || Number.isNaN(time)) {
+                return `Lap ${ctx.dataIndex + 1}: n/a`;
+              }
+              return `Lap ${ctx.dataIndex + 1}: ${time.toFixed(3)}s`;
+            }
           }
         },
         zoom: false,
@@ -103,21 +131,28 @@
   });
 
   function updateChart() {
-    const labels = [];
-    const vals = [];
     const removed = [];
-    for (let i = 0; i < lapTimes.length; i++) {
-      const isOutlier = outlierFlags[i];
-      const withinMax = manualMax === null || lapTimes[i] <= manualMax;
-      if ((!hideOutliers || !isOutlier) && withinMax) {
-        labels.push(`Lap ${i + 1}`);
-        vals.push(lapTimes[i]);
-      } else if (hideOutliers && isOutlier) {
-        removed.push(`Lap ${i + 1}: ${lapTimes[i].toFixed(3)}s`);
+    const filteredData = lapTimes.map((lapValue, idx) => {
+      const isValid = lapValue !== null && !Number.isNaN(lapValue);
+      const isOutlier = outlierFlags[idx];
+      const overManual = manualMax !== null && isValid && lapValue > manualMax;
+
+      if (!isValid) {
+        return null;
       }
-    }
-    chart.data.labels = labels;
-    chart.data.datasets[0].data = vals;
+
+      if ((hideOutliers && isOutlier) || overManual) {
+        if (hideOutliers && isOutlier) {
+          removed.push(`Lap ${idx + 1}: ${lapValue.toFixed(3)}s`);
+        }
+        return null;
+      }
+
+      return lapValue;
+    });
+
+    chart.data.labels = lapTimes.map((_, i) => `Lap ${i + 1}`);
+    chart.data.datasets[0].data = filteredData;
     chart.update();
     const info = document.getElementById('outlierInfo');
     if (hideOutliers && removed.length) {

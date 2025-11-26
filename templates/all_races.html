@@ -68,9 +68,10 @@
         </thead>
         <tbody>
           {% for s in sessions %}
-          <tr class="{% if s.challenge_gp %}table-success challenge-gp{% elif s.drift_night %}table-warning drift-night{% endif %}"
+          <tr class="{% if s.timing_issue %}table-danger timing-issue{% elif s.challenge_gp %}table-success challenge-gp{% elif s.drift_night %}table-warning drift-night{% endif %}"
               data-challenge="{{ 'true' if s.challenge_gp else 'false' }}"
               data-drift="{{ 'true' if s.drift_night else 'false' }}"
+              data-timing="{{ 'true' if s.timing_issue else 'false' }}"
               data-datetime="{{ s.date_iso }}"
               data-race-number="{{ s.race_number }}"
               data-session="{{ s.id }}">
@@ -89,7 +90,7 @@
             <td>{{ s.total_laps }}</td>
             <td>{{ s.fastest_lap_num }}</td>
             {% for lap in s.laps %}
-            <td>{{ "%.3f"|format(lap|float) }}</td>
+            <td>{% if lap is not none %}{{ "%.3f"|format(lap|float) }}{% endif %}</td>
             {% endfor %}
             {% for i in range(16 - s.laps|length) %}
             <td></td>
@@ -104,7 +105,7 @@
       <button id="toggleRows" class="btn btn-outline-secondary btn-sm chart-btn">Show All</button>
       <button id="challengeBtn" class="btn btn-outline-secondary btn-sm chart-btn ms-2">Show Potential Challenge GP</button>
     </div>
-    <div class="small text-muted">Green rows highlight potential Challenge GP races. Yellow rows indicate likely drift nights.</div>
+    <div class="small text-muted">Green rows highlight potential Challenge GP races. Yellow rows indicate likely drift nights. Red rows mark sessions with laps removed as likely timing errors.</div>
   </div>
 </div>
 
@@ -223,6 +224,10 @@
 }
 
 .drift-night {
+  font-weight: 600;
+}
+
+.timing-issue {
   font-weight: 600;
 }
 
